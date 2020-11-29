@@ -26,7 +26,7 @@ def find_package_paths(cwd,ignore_patterns=("venv",)):
     seen = set()
     while dir_frontier:
         curdir = dir_frontier.pop(0)
-        print("SEARCH:", curdir)
+        # print("SEARCH:", curdir)
         if curdir in seen:
             continue
         seen.add(curdir)
@@ -34,7 +34,7 @@ def find_package_paths(cwd,ignore_patterns=("venv",)):
         pdir = os.path.dirname(curdir)
 
         files = os.listdir(curdir)
-        print(" CheckFILES:",files)
+        # print(" CheckFILES:",files)
         for fname in files:
             if fname.startswith("."):
                 continue
