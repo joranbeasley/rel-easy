@@ -3,6 +3,7 @@ import re
 import shutil
 import subprocess
 import sys
+from contextlib import contextmanager
 
 from future.utils import isidentifier
 
@@ -90,6 +91,13 @@ def create_version_file(package, package_dir, verString, sha_hash="", **kwds):
         ver_tmpl_path = os.path.join(os.path.dirname(__file__), "DATA", "version.tmpl")
         template = open(ver_tmpl_path, "r").read().format(VER=verString, HASH=sha_hash)
         f.write(template)
+
+@contextmanager
+def temp_cwd(cwd):
+    oldDir = os.getcwd()
+    os.chdir(cwd)
+    yield
+    os.chdir(oldDir)
 
 def create_setup_py(fpath,pkg_name,pkg_desc,pkg_author,pkg_email,pkg_site):
     fmt_data = dict(

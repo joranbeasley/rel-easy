@@ -6,10 +6,11 @@ import subprocess
 import sys
 
 import click
+from django.core.files import temp
 
 from releasy import SemVersion
 from releasy.util import find_package_paths, path_to_package_candidate, create_setup_py, get_or_prompt, \
-    seperate_name_and_email, build_and_clean, build_and_publish, push_to_pypi, create_version_file
+    seperate_name_and_email, build_and_clean, build_and_publish, push_to_pypi, create_version_file, temp_cwd
 
 
 def click_promptChoice(*choices,default=None,prompt="Select One"):
@@ -37,6 +38,15 @@ def click_package(s):
 @click.pass_context
 def cli(ctx):
     pass
+def require_init(fn):
+    def __inner(*args,**kwargs):
+        package = kwargs['package_dir']
+        if not os.path.exists(os.path.join(package['package_dir'], package['package'], "version.py")):
+            executable = click.get_current_context().command_path.split(" ", 1)[0]
+            raise RuntimeError("You MUST run `%s init` first" % executable)
+        fn(*args,**kwargs)
+    return __inner
+
 @cli.command()
 @click.argument("major",type=int,default=0,required=False)
 @click.argument("minor",type=int,default=0,required=False)
@@ -48,21 +58,13 @@ def cli(ctx):
 @click.option("-x","--extra","extra2",type=str,default=None,required=False)
 @click.option("-p","--package_dir",type=click_package,default=list(find_package_paths(".")))
 @click.option("-g","--git-hash",is_flag=True,default=False)
+@require_init
 def rev(major,minor,build,extra,**kwds):
-    package = kwds['package_dir']
-    if not os.path.exists(os.path.join(package['package_dir'],package['package'],"version.py")):
-        executable = click.get_current_context().command_path.split(" ",1)[0]
-        raise RuntimeError("You MUST run `%s init` first"%executable)
-
-    major = kwds.get('major2', major) or major
-    minor = kwds.get('minor2', minor) or minor
-    build = kwds.get('build2', build) or build
-    extra = kwds.get('extra2', extra) or extra
+    package, package_dir = kwds['package_dir']['package'], kwds['package_dir']['package_dir']
     oldDir = os.getcwd()
-    os.chdir(package['package_dir'])
-    pkg = importlib.import_module(package['package']+".version","version")
+    os.chdir(package_dir)
+    pkg = importlib.import_module(package+".version","version")
     os.chdir(oldDir)
-
     otherVer = SemVersion.from_string(pkg.__version__)
     otherVer.extra_tag = extra
     otherVer.version_tuple = tuple(a+b for a,b in zip([major,minor,build],otherVer.version_tuple))
@@ -76,15 +78,10 @@ def rev(major,minor,build,extra,**kwds):
 @click.argument("which",type=click.Choice(["major","minor","build"],case_sensitive=False),default="build")
 @click.option("-p","--package_dir",type=click_package,default=list(find_package_paths(".")))
 @click.option("-g","--git-hash",is_flag=True,default=False)
+@require_init
 def bumpver(**kwds):
-    package = kwds['package_dir']
-    if not os.path.exists(os.path.join(package['package_dir'], package['package'], "version.py")):
-        executable = click.get_current_context().command_path.split(" ", 1)[0]
-        raise RuntimeError("You MUST run `%s init` first" % executable)
-    oldDir = os.getcwd()
-    os.chdir(package['package_dir'])
-    pkg = importlib.import_module(package['package'] + ".version", "version")
-    os.chdir(oldDir)
+    package,package_dir = kwds['package_dir']['package'], kwds['package_dir']['package_dir']
+
     otherVer = SemVersion.from_string(pkg.__version__)
     if kwds['which'] == "major":
         otherVer.set(otherVer.major+1,0,0)
@@ -92,7 +89,7 @@ def bumpver(**kwds):
         otherVer.set(otherVer.major,otherVer.minor+1,0)
     if kwds['which'] == "build":
         otherVer.set(otherVer.major,otherVer.minor,otherVer.build+1)
-    create_version_file(package['package'], package['package_dir'], str(otherVer), hash="")
+    create_version_file(package, package_dir, str(otherVer), hash="")
     print("SET VERSION: %s"%otherVer)
 
 @cli.command("setver")
@@ -112,16 +109,14 @@ def set_ver(major,minor,build,extra,**kwds):
     if not os.path.exists(os.path.join(package['package_dir'], package['package'], "version.py")):
         executable = click.get_current_context().command_path.split(" ", 1)[0]
         raise RuntimeError("You MUST run `%s init` first" % executable)
-    major = kwds.get('major2', major) or major
-    minor = kwds.get('minor2', minor) or minor
-    build = kwds.get('build2', build) or build
-    extra = kwds.get('extra2', extra) or extra
+    ver = None
     if kwds.get('version'):
         try:
             ver = SemVersion.from_string(kwds.get('version'))
         except:
-            ver = SemVersion(major, minor, build, extra)
-    else:
+            pass
+    if not ver:
+        major, minor, build, extra = _get_version_overrides(major,minor,build,extra,**kwds)
         ver = SemVersion(major, minor, build, extra)
     create_version_file(package['package'], package['package_dir'], str(ver), hash="")
     print("SET VERSION: %s"%ver)
@@ -155,7 +150,7 @@ def deploy_pypi(package_dir,versionstring=None,sha1=False,build_only=False,**kwd
 
 
 
-@cli.command()
+@cli.command("init")
 @click.argument("major",type=int,default=0,required=False)
 @click.argument("minor",type=int,default=0,required=False)
 @click.argument("build",type=int,default=0,required=False)
@@ -164,49 +159,33 @@ def deploy_pypi(package_dir,versionstring=None,sha1=False,build_only=False,**kwd
 @click.option("-m","--minor","minor2",type=int,default=None,required=False)
 @click.option("-b","--build","build2",type=int,default=None,required=False)
 @click.option("-x","--extra","extra2",type=str,default=None,required=False)
-@click.option("-v","--verString",type=str,default=None,required=False)
+@click.option("-v","--version",type=str,default=None,required=False)
 @click.option("-s","--setuppy",type=click.Choice(["y","n","prompt"],case_sensitive=False),default="prompt",required=False)
 @click.option("-p","--package_dir",type=click_package,default=list(find_package_paths(".")))
-@click.option("-g","--git-hash",is_flag=True,default=False)
+@click.option("--sha1",is_flag=True,default=False)
 @click.option("--gh-action","--add-github-deploy-action",prompt=True,type=click.Choice("yN",case_sensitive=False),default=None)
 def init(major,minor,build,extra,**kwds):
-    major = kwds.get('major2',major) or major
-    minor = kwds.get('minor2',minor) or minor
-    build = kwds.get('build2',build) or build
-    extra = kwds.get('extra2',extra) or extra
-    if kwds.get('verStr'):
-        try:
-            ver = SemVersion.from_string(kwds.get('verStr'))
-        except:
-            ver = SemVersion(major,minor,build,extra)
-    else:
-        ver = SemVersion(major,minor,build,extra)
-    package = kwds['package_dir']
-    # pkg0 = packages[0]
-    if kwds.get("git_hash"):
-        hash = os.popen("git log --pretty=%H -1").read()
-        print("H:",hash)
-    create_version_file(package['package'], package['package_dir'], str(ver),hash="")
-    if not os.path.exists("{package_dir}/setup.py".format(**package)):
+    package, package_dir = kwds['package_dir']['package'], kwds['package_dir']['package_dir']
+    try:
+        ver = SemVersion.from_string(kwds.get('version'))
+    except:
+        major, minor, build, extra = _get_version_overrides(major, minor, build, extra, **kwds)
+        ver = SemVersion(major, minor, build, extra)
+    sha_hash = ""
+    if kwds.get("sha1"):
+        sha_hash = os.popen("git log --pretty=%H -1").read()
+
+    create_version_file(package, package_dir, str(ver),sha_hash=sha_hash)
+    setup_path = os.path.join(package_dir,"setup.py")
+    if not os.path.exists(setup_path):
         r = click.prompt("Create setup.py?",default="y",type=click.Choice("yn",case_sensitive=False))
         if r.lower() == "y":
             d = {}
             d.update(**kwds)
             d.update(**package)
-            pkg_name = get_or_prompt(kwds, '--package-name', 'yes', package.replace("_","-"), click.prompt)
-            pkg_desc = get_or_prompt(kwds, '--description', "yes", "This is just some project", click.prompt)
-            pkg_author = get_or_prompt(kwds, '--author', "yes", "anony mouse <anyone@email.com>", click.prompt)
-            pkg = seperate_name_and_email(pkg_author)
-            pkg_author = pkg['author']
-            pkg_email = pkg.get('email', None) or kwds.get('email', None)
-            if not pkg_email:
-                pkg_email = "anony mouse <anyone@email.com>"
-                if not kwds.get('yes'):
-                    pkg_email = click.prompt("--email", default=pkg_email)
-
-            create_setup_py(pkg_name,pkg_desc,pkg_author,pkg_email,kwds.get('site',None))
+            create_setup_py(setup_path, **_initialize_setup_py_kwds(d))
     else:
-        setup_txt = open("{package_dir}/setup.py".format(**package)).read()
+        setup_txt = open(setup_path).read()
         import_stmt = "from {package}.version import __version__".format(**package)
         if import_stmt not in setup_txt:
             r = click.prompt("It looks like we should update setup.py to use the version?", default="y", type=click.Choice("Yn", case_sensitive=False))
@@ -228,6 +207,29 @@ def init(major,minor,build,extra,**kwds):
             f.write(github_action_def)
         os.system("git add {package_dir}/.github/workflows/deploy.yml".format(**package))
         print("installed .github/workflows/deploy.yml")
+def _import_version(package,package_dir):
+    with temp_cwd(package_dir):
+        pkg = importlib.import_module(package + ".version", "version")
+def _get_version_overrides(major,minor,build,extra,**kwds):
+    major = kwds.get('major2', major) or major
+    minor = kwds.get('minor2', minor) or minor
+    build = kwds.get('build2', build) or build
+    extra = kwds.get('extra2', extra) or extra
+    return major,minor,build,extra
+def _initialize_setup_py_kwds(kwds):
+    data = dict(
+    pkg_name = get_or_prompt(kwds, '--package-name', 'yes', kwds['package'].replace("_", "-"), click.prompt),
+    pkg_desc = get_or_prompt(kwds, '--description', "yes", "This is just some project", click.prompt),
+    pkg_author = get_or_prompt(kwds, '--author', "yes", "anony mouse <anyone@email.com>", click.prompt)
+    )
+    pkg = seperate_name_and_email(data['pkg_author'])
+    data['pkg_author'] = pkg['author']
+    data['pkg_email'] = pkg.get('email', None) or kwds.get('email', None)
+    if not data['pkg_email']:
+        data['pkg_email'] = "anony mouse <anyone@email.com>"
+        if not kwds.get('yes'):
+            data['pkg_email'] = click.prompt("--email", default=data['pkg_email'])
+    return data
 
 
 
