@@ -46,7 +46,8 @@ def find_package_paths(cwd,ignore_patterns=("venv",)):
                 if fname[0] not in "_." and os.path.isdir(fpath):
                     if not any(pat in fname for pat in ignore_patterns):
                         # print("APPEND:",fname)
-                        dir_frontier.append(fpath)
+                        if fpath not in seen:
+                            dir_frontier.append(fpath)
 
 
 
