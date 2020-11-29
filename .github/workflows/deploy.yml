@@ -51,12 +51,12 @@ jobs:
 
         #cat releasy/version.py
         if ! [[ "${{ github.event.inputs.version }}" == "" ]]; then
-          echo "TRIGGERED FROM BUTTON"
-          rel-easy publish --build_only
+          echo "TRIGGERED FROM BUTTON, only build tar, do not deploy"
+          rel-easy publish --build-only
         #  rm -rf dist
         else
-          echo "TRIGGERED FROM RELEASE"
-          rel-easy publish --build_only
+          echo "TRIGGERED FROM RELEASE PUBLISH TO PYPI"
+          rel-easy publish
         fi
     - name: Archive production artifacts
       uses: actions/upload-artifact@v2
