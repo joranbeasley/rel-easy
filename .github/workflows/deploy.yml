@@ -48,8 +48,7 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-
-        #cat releasy/version.py
+        cat releasy/version.py
         if ! [[ "${{ github.event.inputs.version }}" == "" ]]; then
           echo "TRIGGERED FROM BUTTON, only build tar, do not deploy"
           rel-easy publish --build-only
