@@ -29,18 +29,20 @@ def find_package_paths(cwd,ignore_patterns=("venv",)):
         print("SEARCH:", curdir)
         pname = os.path.basename(curdir)
         pdir = os.path.dirname(curdir)
-        if isidentifier(pname):
-            files = os.listdir(curdir)
-            print(" CheckFILES:",files)
-            for fname in files:
-                if fname == "__init__.py":
+
+        files = os.listdir(curdir)
+        print(" CheckFILES:",files)
+        for fname in files:
+            if fname == "__init__.py":
+                if isidentifier(pname):
                     yield curdir
-                else:
-                    fpath = os.path.join(curdir, fname)
-                    if fname[0] not in "_." and os.path.isdir(fpath):
-                        if not any(pat in fname for pat in ignore_patterns):
-                            # print("APPEND:",fname)
-                            dir_frontier.append(fpath)
+            else:
+                fpath = os.path.join(curdir, fname)
+                if fname[0] not in "_." and os.path.isdir(fpath):
+                    if not any(pat in fname for pat in ignore_patterns):
+                        # print("APPEND:",fname)
+                        dir_frontier.append(fpath)
+
 
 
 
