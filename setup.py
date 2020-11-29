@@ -12,11 +12,10 @@ setuptools.setup(
     entry_points={
         'console_scripts':['rel-easy=releasy.cli:main','releasy=releasy.cli:main'],
     },
-    data_files=[('Lib/site-packages/releasy/DATA', [
-                            'releasy/DATA/github-deploy-action-yml.tmpl',
-                            'releasy/DATA/setup_py.tmpl',
-                            'releasy/DATA/version.tmpl']),
-                ],
+    package_data={
+        # If any package contains *.txt files, include them:
+        "releasy": ["DATA/*.tmpl"]}
+    ,
     # uncomment for auto install requirements
     install_requires=['click','six'],
     # uncomment for classifiers
