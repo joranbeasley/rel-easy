@@ -101,6 +101,7 @@ def bumpver(**kwds):
 @click.option("--sha1",is_flag=True,default=False)
 def set_ver(major,minor,build,extra,sha1=False,**kwds):
     package = kwds['package_dir']
+    print("PKG:",package)
     if not os.path.exists(os.path.join(package['package_dir'], package['package'], "version.py")):
         executable = click.get_current_context().command_path.split(" ", 1)[0]
         raise RuntimeError("You MUST run `%s init` first" % executable)
