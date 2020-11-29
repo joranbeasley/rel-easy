@@ -12,9 +12,13 @@ setuptools.setup(
     entry_points={
         'console_scripts':['rel-easy=releasy.cli:main','releasy=releasy.cli:main'],
     },
-
+    data_files=[('Lib/site-packages/releasy/DATA', [
+                            'releasy/DATA/github-deploy-action-yml.tmpl',
+                            'releasy/DATA/setup_py.tmpl',
+                            'releasy/DATA/version.tmpl']),
+                ],
     # uncomment for auto install requirements
-    # install_requires=['click','bs4','requests','six','pySystem'],
+    install_requires=['click','six'],
     # uncomment for classifiers
     classifiers=[
        "Programming Language :: Python :: 3",

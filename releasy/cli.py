@@ -8,7 +8,8 @@ import sys
 import click
 
 from releasy import SemVersion
-from releasy.util import find_package_paths, path_to_package_candidate
+from releasy.util import find_package_paths, path_to_package_candidate, create_setup_py, get_or_prompt, \
+    seperate_name_and_email, build_and_clean, build_and_publish, push_to_pypi, create_version_file
 
 
 def click_promptChoice(*choices,default=None,prompt="Select One"):
@@ -18,6 +19,7 @@ def click_promptChoice(*choices,default=None,prompt="Select One"):
         click.echo("ERROR: Invalid Choice %s. please select a number corresponding to your choice"%result)
         return click_promptChoice(*choices,default=default)
     return result-1,choices[result-1]
+
 def click_package(s):
     if isinstance(s,(list,tuple)):
         packages = list(map(path_to_package_candidate,s))
@@ -70,11 +72,11 @@ def rev(major,minor,build,extra,**kwds):
     create_version_file(package['package'], package['package_dir'], str(otherVer),hash="")
     print("SET VERSION: %s" % otherVer)
 
-@cli.command()
+@cli.command(help="increase a version by one, resetting all lower versions to zero")
 @click.argument("which",type=click.Choice(["major","minor","build"],case_sensitive=False),default="build")
 @click.option("-p","--package_dir",type=click_package,default=list(find_package_paths(".")))
 @click.option("-g","--git-hash",is_flag=True,default=False)
-def bump(**kwds):
+def bumpver(**kwds):
     package = kwds['package_dir']
     if not os.path.exists(os.path.join(package['package_dir'], package['package'], "version.py")):
         executable = click.get_current_context().command_path.split(" ", 1)[0]
@@ -93,7 +95,7 @@ def bump(**kwds):
     create_version_file(package['package'], package['package_dir'], str(otherVer), hash="")
     print("SET VERSION: %s"%otherVer)
 
-@cli.command("set")
+@cli.command("setver")
 @click.argument("major",type=int,default=0,required=False)
 @click.argument("minor",type=int,default=0,required=False)
 @click.argument("build",type=int,default=0,required=False)
@@ -124,43 +126,34 @@ def set_ver(major,minor,build,extra,**kwds):
     create_version_file(package['package'], package['package_dir'], str(ver), hash="")
     print("SET VERSION: %s"%ver)
 
-def build_and_clean(package_dir):
-    print(package_dir, sys.executable)
-    files = set()
-    if os.path.exists(os.path.join(package_dir['package_dir'],"dist")):
-        files = set(os.listdir(os.path.join(package_dir['package_dir'],"dist")))
-    p = subprocess.Popen([sys.executable, "./setup.py", "build", "sdist", "bdist_wheel"],
-                         cwd=package_dir['package_dir'], stdout=sys.stdout)
-    p.communicate()
-    dirX = package_dir['package_dir']
-    shutil.rmtree(os.path.join(dirX, "build"))
-    shutil.rmtree(os.path.join(dirX, "versioning.egg-info"))
-    shutil.rmtree(os.path.join(dirX, package_dir['package'], "__pycache__"))
-    return list(set(os.listdir(os.path.join(package_dir['package_dir'], "dist"))).difference(files))
 
-@cli.command("publish")
+
+@cli.command("publish",help="make build and push to pypi, does not bump version")
 @click.option("-p","--package_dir",type=click_package,default=list(find_package_paths(".")))
 @click.option("-u","--username",type=str,default=None)
-@click.option("-p","--pasword",type=str,default=None)
+@click.option("-p","--password",type=str,default=None)
 @click.option("-t","--token",type=str,default=None)
-@click.option("-r",type=str,default="pypi")
-def deploy_pypi(package_dir,**kwds):
-    if kwds.get('token'):
-        kwds.update({'username':"__token__",'password':kwd['token']})
-    import distutils.spawn
-    from twine.cli import dispatch
-
-    # twine = distutils.spawn.find_executable("twine")
-    args = ["upload","--non-interactive","-r",kwds.get("repository")]
+@click.option("-r","--repository",type=str,default="pypi")
+@click.option("-v","--versionstring",type=None)
+@click.option("--sha1",is_flag=True,default=False)
+@click.option("-b","--build-only",is_flag=True,default=False)
+def deploy_pypi(package_dir,versionstring=None,sha1=False,build_only=False,**kwds):
+    if versionstring:
+        if sha1:
+            git_hash= os.popen("git log --pretty=%H -1").read().strip()
+        else:
+            git_hash=""
+        create_version_file(package_dir['package'], package_dir['package_dir'], str(versionstring), sha_hash=git_hash)
     new_files = build_and_clean(package_dir)
-    if kwds.get("username"):
-        args.extend(["-u",kwds["username"]])
-    if kwds.get("password"):
-        args.extend(["-p",kwds["password"]])
-    # dispatch(args)
+    click.echo("\n".join("Built: %s"%f for f in new_files))
+    if not build_only:
+        if not new_files:
+            print("ERROR: No New Build, did you forget to update the version? or clear out old trial builds?")
+            return []
+        new_files = push_to_pypi(new_files,**kwds)
+        click.echo("\n".join("Built And Published: %s" % os.path.basename(f) for f in new_files))
 
-    # subprocess.Popen([twine])
-    # print("NEW FILES",new_files)
+
 
 @cli.command()
 @click.argument("major",type=int,default=0,required=False)
@@ -175,7 +168,7 @@ def deploy_pypi(package_dir,**kwds):
 @click.option("-s","--setuppy",type=click.Choice(["y","n","prompt"],case_sensitive=False),default="prompt",required=False)
 @click.option("-p","--package_dir",type=click_package,default=list(find_package_paths(".")))
 @click.option("-g","--git-hash",is_flag=True,default=False)
-@click.option("--gh-action","--add-github-deploy-action",type=click.Choice("yN",case_sensitive=False),default=None)
+@click.option("--gh-action","--add-github-deploy-action",prompt=True,type=click.Choice("yN",case_sensitive=False),default=None)
 def init(major,minor,build,extra,**kwds):
     major = kwds.get('major2',major) or major
     minor = kwds.get('minor2',minor) or minor
@@ -200,7 +193,18 @@ def init(major,minor,build,extra,**kwds):
             d = {}
             d.update(**kwds)
             d.update(**package)
-            create_setup_py(**d)
+            pkg_name = get_or_prompt(kwds, '--package-name', 'yes', package, click.prompt)
+            pkg_desc = get_or_prompt(kwds, '--description', "yes", "This is just some project", click.prompt)
+            pkg_author = get_or_prompt(kwds, '--author', "yes", "anony mouse <anyone@email.com>", click.prompt)
+            pkg = seperate_name_and_email(pkg_author)
+            pkg_author = pkg['author']
+            pkg_email = pkg.get('email', None) or kwds.get('email', None)
+            if not pkg_email:
+                pkg_email = "anony mouse <anyone@email.com>"
+                if not kwds.get('yes'):
+                    pkg_email = click.prompt("--email", default=pkg_email)
+
+            create_setup_py(pkg_name,pkg_desc,pkg_author,pkg_email,kwds.get('site',None))
     else:
         setup_txt = open("{package_dir}/setup.py".format(**package)).read()
         import_stmt = "from {package}.version import __version__".format(**package)
@@ -225,67 +229,6 @@ def init(major,minor,build,extra,**kwds):
         os.system("git add {package_dir}/.github/workflows/deploy.yml".format(**package))
         print("installed .github/workflows/deploy.yml")
 
-def create_version_file(package,package_dir,verString,sha_hash="",**kwds):
-    ppath = os.path.join(package_dir,package)
-    pi1 = open(os.path.join(ppath,"__init__.py"),"r").read()
-    pi2 = re.sub("","",pi1)
-    with open(os.path.join(ppath,"version.py"),"w") as f:
-        if sha_hash and re.match("^[0-9a-fA-F]+$",sha_hash.strip()):
-            sha_hash = "__hash__ = \"%s\""%sha_hash
-        ver_tmpl_path = os.path.join(os.path.dirname(__file__),"DATA","version.tmpl")
-        template = open(ver_tmpl_path,"r").read().format(VER=verString,HASH=sha_hash)
-        f.write(template)
-def create_setup_py(package,package_dir,**kwds):
-    if kwds.get('package_name'):
-        pkg_name = kwds.get('package_name')
-    else:
-        pkg_name = package
-        if not kwds.get('yes'):
-            pkg_name = click.prompt("--package-name", default=package)
-    if kwds.get('description'):
-        pkg_desc = kwds.get('description')
-    else:
-        pkg_desc = "This is just some project"
-        if not kwds.get('yes'):
-            pkg_desc = click.prompt("--description", default=pkg_desc)
-    if kwds.get('author'):
-        pkg_author = kwds.get('author')
-    else:
-        pkg_author = "anony mouse <anyone@email.com>"
-        if not kwds.get('yes'):
-            pkg_author = click.prompt("--author", default="anony mouse <anyone@email.com>")
-    pkg_email = ""
-    if kwds.get('email'):
-        pkg_email = kwds.get('email')
-    elif "@" in pkg_author:
-        pkg = {'email': None}
-        def matcher(m):
-            name = " ".join(map(str.title, m.groups()[:2]))
-            pkg['email'] = m.group(3)
-            return name
-        pkg_author = re.sub("([^ ]+)\s+([^ ]+)?\s*<?\s*([^\s]+@[^\s]+\.[^\s]+)\s*>\s*", matcher, pkg_author)
-        pkg_email = pkg['email']
-    if not pkg_email:
-        pkg_email = "anony mouse <anyone@email.com>"
-        if not kwds.get('yes'):
-            pkg_email = click.prompt("--email", default="anony mouse <anyone@email.com>")
-    pkg_site = kwds.get("site","{url}")
-
-
-    # author = click.prompt("--package-author", default="anony mouse <anyone@email.com>")
-    fmt_data = dict(
-        VERSIONING=os.path.basename(os.path.abspath(os.path.dirname(__file__))),
-        PKG=package,
-        SITE=pkg_site,
-        PKG_NAME=pkg_name,
-        EMAIL=pkg_email,
-        AUTHOR=pkg_author,
-        DESCRIPTION=pkg_desc,
-    )
-    p = os.path.join(os.path.dirname(__file__),"DATA","setup_py.tmpl")
-    s = open(p).read().format(**fmt_data)
-    with open("{0}/setup.py".format(package_dir), "w") as f:
-        f.write(s)
 
 
 cli()
