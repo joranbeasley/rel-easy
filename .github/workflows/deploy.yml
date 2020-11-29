@@ -9,10 +9,10 @@ on:
       - created
   workflow_dispatch:
     inputs:
-      name:
-        description: 'Person to greet'
+      version:
+        description: 'Version Identifier'
         required: true
-        default: 'Mona the Octocat'
+        default: 'a0.0.0v'
 jobs:
   deploy:
 
@@ -45,19 +45,25 @@ jobs:
       run: |
         # rel-easy publish
         cat releasy/version.txt
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: dist
-        path: |
-          dist
+        if ! [[ "${{ github.event.inputs.version }}" == "" ]]; then
+          echo "TRIGGERED FROM BUTTON"
+          rm -rf dist
+        else:
+          echo "TRIGGERED FROM RELEASE"
+        fi
+#    - name: Archive production artifacts
+#      uses: actions/upload-artifact@v2
+#      with:
+#        name: dist
+#        path: |
+#          dist
     - name: Cleanup
       # run any cleanup needed
       run: |
         echo "All Done..."
-    - name: Commit Version File
-      run: |    # this will push the change back up to git
-        git add releasy/version.py
-        git commit -m "Updated Verion to ${{ github.event.release.tag_name }} And Released build to PyPi"
+#    - name: Commit Version File
+#      run: |    # this will push the change back up to git
+#        git add releasy/version.py
+#        git commit -m "Updated Verion to ${{ github.event.release.tag_name }} And Released build to PyPi"
 
 
