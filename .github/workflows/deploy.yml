@@ -51,9 +51,8 @@ jobs:
       run: |
         echo "All Done..."
     - name: Commit Version File
-      run: |
+      run: |    # this will push the change back up to git
         git add releasy/version.py
         git commit -m "Updated Verion to ${{ github.event.release.tag_name }} And Released build to PyPi"
-      # this will push the change back up to git
-      with:
-        commit_message: Deploy Version ${{ github.event.release.tag_name }} to PyPi.
+     
+   
