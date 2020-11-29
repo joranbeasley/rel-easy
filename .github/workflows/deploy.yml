@@ -41,11 +41,11 @@ jobs:
         # rel-easy publish
         cat releasy/version.txt
     - name: Archive production artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: dist
-          path: |
-            dist
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: |
+          dist
     - name: Cleanup
       # run any cleanup needed
       run: |
