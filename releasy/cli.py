@@ -193,7 +193,7 @@ def init(major,minor,build,extra,**kwds):
             d = {}
             d.update(**kwds)
             d.update(**package)
-            pkg_name = get_or_prompt(kwds, '--package-name', 'yes', package, click.prompt)
+            pkg_name = get_or_prompt(kwds, '--package-name', 'yes', package.replace("_","-"), click.prompt)
             pkg_desc = get_or_prompt(kwds, '--description', "yes", "This is just some project", click.prompt)
             pkg_author = get_or_prompt(kwds, '--author', "yes", "anony mouse <anyone@email.com>", click.prompt)
             pkg = seperate_name_and_email(pkg_author)

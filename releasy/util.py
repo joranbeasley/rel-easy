@@ -97,6 +97,7 @@ def create_setup_py(fpath,pkg_name,pkg_desc,pkg_author,pkg_email,pkg_site):
         PKG=pkg_name,
         SITE=pkg_site,
         PKG_NAME=pkg_name,
+        PKG_NAME_DASHED=pkg_name.replace("_","-"),
         EMAIL=pkg_email,
         AUTHOR=pkg_author,
         DESCRIPTION=pkg_desc,
