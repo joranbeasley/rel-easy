@@ -35,6 +35,9 @@ jobs:
     - name: Update Version
       run: |
         TAG=${GITHUB_REF##*/}
+        if ! [[ "${{ github.event.inputs.version }}" == "" ]]; then
+          TAG=${{ github.event.inputs.version }}
+        fi
         echo Tag Version: $TAG
         # set the version and current hash
         rel-easy setver -ver $TAG --sha1
@@ -48,7 +51,7 @@ jobs:
         if ! [[ "${{ github.event.inputs.version }}" == "" ]]; then
           echo "TRIGGERED FROM BUTTON"
           rm -rf dist
-        else:
+        else
           echo "TRIGGERED FROM RELEASE"
         fi
 #    - name: Archive production artifacts
