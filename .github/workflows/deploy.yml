@@ -40,7 +40,7 @@ jobs:
         fi
         echo Tag Version: $TAG
         # set the version and current hash
-        rel-easy setver -ver $TAG --sha1
+        rel-easy setver --version $TAG --sha1
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
