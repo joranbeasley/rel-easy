@@ -98,8 +98,8 @@ def bumpver(**kwds):
 @click.option("-x","--extra","extra2",type=str,default=None,required=False)
 @click.option("-v","--version",type=str,default=None,required=False)
 @click.option("-p","--package_dir",type=click_package,default=list(find_package_paths(".")))
-@click.option("-g","--git-hash",is_flag=True,default=False)
-def set_ver(major,minor,build,extra,**kwds):
+@click.option("--sha1",is_flag=True,default=False)
+def set_ver(major,minor,build,extra,sha1=False,**kwds):
     package = kwds['package_dir']
     if not os.path.exists(os.path.join(package['package_dir'], package['package'], "version.py")):
         executable = click.get_current_context().command_path.split(" ", 1)[0]
@@ -113,7 +113,11 @@ def set_ver(major,minor,build,extra,**kwds):
     if not ver:
         major, minor, build, extra = _get_version_overrides(major,minor,build,extra,**kwds)
         ver = SemVersion(major, minor, build, extra)
-    create_version_file(package['package'], package['package_dir'], str(ver), hash="")
+    if sha1:
+        git_hash = os.popen("git log --pretty=%H -1").read().strip()
+    else:
+        git_hash = ""
+    create_version_file(package['package'], package['package_dir'], str(ver), sha_hash=git_hash)
     print("SET VERSION: %s"%ver)
 
 
