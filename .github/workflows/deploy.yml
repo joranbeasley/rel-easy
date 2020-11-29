@@ -65,8 +65,11 @@ jobs:
           dist
     - name: Commit Version File
       run: |    # this will push the change back up to git
+        git config --global user.email "releasy@email.com"
+        git config --global user.name "AutoDeploy Script"
         git add releasy/version.py
         git commit -m "Updated Verion to ${{ github.event.release.tag_name }} And Released build to PyPi"
+        git push
     - name: Cleanup
       # run any cleanup needed
       run: |
