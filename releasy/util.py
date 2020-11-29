@@ -22,13 +22,16 @@ def find_package_paths(cwd,ignore_patterns=("venv",)):
     :return:
     """
     dir_frontier = [os.path.abspath(cwd)]
+
     seen = set()
     while dir_frontier:
         curdir = dir_frontier.pop(0)
+        print("SEARCH:", curdir)
         pname = os.path.basename(curdir)
         pdir = os.path.dirname(curdir)
         if isidentifier(pname):
             files = os.listdir(curdir)
+            print(" CheckFILES:",files)
             for fname in files:
                 if fname == "__init__.py":
                     yield curdir
