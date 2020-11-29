@@ -4,9 +4,8 @@ import shutil
 import subprocess
 import sys
 from contextlib import contextmanager
-
-from future.utils import isidentifier
-
+#hacky backport that works in all python
+isidentifier = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$").match
 def path_to_package_candidate(path):
     pdir = os.path.dirname(path)
     pname = os.path.basename(path)
