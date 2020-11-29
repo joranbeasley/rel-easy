@@ -1,16 +1,11 @@
 import importlib
 import os
 import re
-import shutil
-import subprocess
-import sys
-
 import click
-from django.core.files import temp
 
 from releasy import SemVersion
 from releasy.util import find_package_paths, path_to_package_candidate, create_setup_py, get_or_prompt, \
-    seperate_name_and_email, build_and_clean, build_and_publish, push_to_pypi, create_version_file, temp_cwd
+    seperate_name_and_email, build_and_clean, push_to_pypi, create_version_file, temp_cwd
 
 
 def click_promptChoice(*choices,default=None,prompt="Select One"):
