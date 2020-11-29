@@ -1,0 +1,47 @@
+name: Upload Python Package
+
+on:
+  release:
+    types: # This configuration does not affect the page_build event above
+      - created
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{{{ github.event.release.target_commitish }}}}
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: |
+        echo Tag Version: ${{GITHUB_REF##*/}}
+        python -m pip install --upgrade pip
+        pip install setuptools wheel twine {PKG}
+    - name: Update Version
+      run: |
+        TAG=${{GITHUB_REF##*/}}
+        echo Tag Version: $TAG
+        {EXE} setver -ver $TAG
+        cat {PKG}/__init__.py
+    - name: Build and publish
+      env:
+        TWINE_USERNAME: ${{{{ secrets.PYPI_USERNAME }}}}
+        TWINE_PASSWORD: ${{{{ secrets.PYPI_PASSWORD }}}}
+      run: |
+        python setup.py sdist bdist_wheel
+        twine upload dist/*
+    - name: Cleanup
+      run: |
+        rm -rf dist
+        rm -rf build
+        rm -rf {PKG}.egg-info
+        rm -rf {PKG}/__pycache__
+    - uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: Deploy Version ${{{{ github.event.release.tag_name }}}} to PyPi.

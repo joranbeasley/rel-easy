@@ -1,0 +1,29 @@
+##### Created By {VERSIONING} ##########################
+import setuptools
+from {PKG}.version import __version__
+setuptools.setup(
+    name="{PKG_NAME}",
+    version=__version__,
+    author="{AUTHOR}",
+    author_email="{EMAIL}",
+    url="{SITE}",
+    description="{DESCRIPTION}",
+    packages=setuptools.find_packages(),
+    entry_points={{
+        # provided for reference
+        # 'console_scripts':['myscript={PKG}.cli:main'],
+    }},
+
+    # uncomment for auto install requirements
+    # install_requires=['click','bs4','requests','six','pySystem'],
+    # uncomment for classifiers
+    #classifiers=[
+    #    "Programming Language :: Python :: 3",
+    #    "License :: OSI Approved :: MIT License",
+    #    "Operating System :: OS Independent",
+    #],
+
+    # uncomment for python version requirements
+    # python_requires='>=2.7',
+)
+##### END ###################################
