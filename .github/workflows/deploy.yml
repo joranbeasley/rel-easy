@@ -1,5 +1,8 @@
 name: Upload Python Package
-
+##############################################
+# Create A Release to trigger a build       ##
+# make sure your tag is Maj.Min.Build form  ##
+##############################################
 on:
   release:
     types: # This configuration does not affect the page_build event above
@@ -22,24 +25,34 @@ jobs:
       run: |
         echo Tag Version: ${GITHUB_REF##*/}
         python -m pip install --upgrade pip
-        pip install setuptools wheel twine versioning
+        pip install setuptools wheel twine
+        pip install .
     - name: Update Version
       run: |
         TAG=${GITHUB_REF##*/}
         echo Tag Version: $TAG
-        rel-easy setver -ver $TAG
+        # set the version and current hash
+        rel-easy setver -ver $TAG --sha1
     - name: Build and publish
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         rel-easy publish
+    - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: |
+            dist
     - name: Cleanup
+      # run any cleanup needed
       run: |
-        rm -rf dist
-        rm -rf build
-        rm -rf versioning.egg-info
-        rm -rf versioning/__pycache__
-    - uses: stefanzweifel/git-auto-commit-action@v4
+        echo "All Done..."
+    - name: Commit Version File
+      run: |
+        git add releasy/version.py
+        git commit -m "Updated Verion to ${{ github.event.release.tag_name }} And Released build to PyPi"
+      # this will push the change back up to git
       with:
         commit_message: Deploy Version ${{ github.event.release.tag_name }} to PyPi.
