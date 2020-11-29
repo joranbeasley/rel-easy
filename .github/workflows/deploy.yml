@@ -7,7 +7,12 @@ on:
   release:
     types: # This configuration does not affect the page_build event above
       - created
-
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Person to greet'
+        required: true
+        default: 'Mona the Octocat'
 jobs:
   deploy:
 
@@ -54,5 +59,5 @@ jobs:
       run: |    # this will push the change back up to git
         git add releasy/version.py
         git commit -m "Updated Verion to ${{ github.event.release.tag_name }} And Released build to PyPi"
-     
-   
+
+
