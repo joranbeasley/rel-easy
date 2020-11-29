@@ -49,7 +49,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         # rel-easy publish
-        cat releasy/version.txt
+        cat releasy/version.py
         if ! [[ "${{ github.event.inputs.version }}" == "" ]]; then
           echo "TRIGGERED FROM BUTTON"
           rm -rf dist
