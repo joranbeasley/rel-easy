@@ -40,8 +40,12 @@ def click_package(s):
             return None
 
     return path_to_package_candidate(s)
-
+def print_version(ctx,param,value):
+    from rel_easy import __version__
+    print(__version__)
+    exit(0)
 @click.group()
+@click.option("-v",is_flag=True,callback=print_version)
 @click.pass_context
 def cli(ctx):
     pass
