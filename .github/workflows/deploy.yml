@@ -59,8 +59,8 @@ jobs:
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        TWINE_TESTUSERNAME: ${{ secrets.PYPI_TESTUSERNAME }}
-        TWINE_TESTPASSWORD: ${{ secrets.PYPI_TESTPASSWORD }}
+        TWINE_TESTUSERNAME: ${{ secrets.TESTPYPI_USERNAME }}
+        TWINE_TESTPASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
       run: |
         if [[ "${{ secrets.PYPI_SERVER }}" == "" ]]; then
           SERVER="testpypi"
