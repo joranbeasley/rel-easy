@@ -70,7 +70,7 @@ there is no need to include a server or credentials with a dry run
 ##### SET Version and release
 
 note: there is no way to `bumpver` or `rev` the version with the `release` subcommand, only setting a 
-specific version
+specific version.
  
 `rel-easy release -v 3.1.1 -r https://test.pypi.org/simple -u __token__ -p <testpypi_token>`
 
