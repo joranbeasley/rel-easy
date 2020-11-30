@@ -40,15 +40,18 @@ def click_package(s):
             return None
 
     return path_to_package_candidate(s)
-def print_version(ctx,param,value):
+def print_version():
     from rel_easy import __version__
     print(__version__)
     exit(0)
 @click.group()
-@click.option("-v",is_flag=True,callback=print_version)
+@click.option("-v","--version",is_flag=True)
 @click.pass_context
-def cli(ctx):
-    pass
+def cli(ctx,version=False):
+    if not ctx.invoked_subcommand and version:
+        print_version()
+
+
 def require_init(fn):
     def __inner(*args,**kwargs):
         package = kwargs['package_dir']
@@ -117,7 +120,7 @@ def bumpver(**kwds):
 @click.option("--sha1",is_flag=True,default=False)
 def set_ver(major,minor,build,extra,sha1=False,**kwds):
     package = kwds['package_dir']
-    print("PKG:",package)
+    # print("PKG:",package)
     if not os.path.exists(os.path.join(package['package_dir'], package['package'], "version.py")):
         executable = click.get_current_context().command_path.split(" ", 1)[0]
         raise RuntimeError("You MUST run `%s init` first" % executable)
