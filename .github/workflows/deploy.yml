@@ -53,6 +53,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
         SERVER: ${{ secrets.TESTPYPY_SERVER }}
       run: |
+        echo "SECRET: $SERVER"
         if [[ "$TWINE_USERNAME" == "" ]]; then
           echo "::error :: unable to deploy without setting TESTPYPI_USERNAME and TESTPYPI_PASSWORD in the project settings"
         fi
