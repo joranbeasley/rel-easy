@@ -55,13 +55,24 @@ jobs:
         rel-easy publish --build-only
 
     - name: Build and publish
-      if: ${{ steps.ident.outputs.IS_RELEASE }}
+      # if: ${{ steps.ident.outputs.IS_RELEASE }}
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        TWINE_TESTUSERNAME: ${{ secrets.PYPI_TESTUSERNAME }}
+        TWINE_TESTPASSWORD: ${{ secrets.PYPI_TESTPASSWORD }}
       run: |
+        if [[ "${{ secrets.PYPI_SERVER }}" == "" ]]; then
+          SERVER="testpypi"
+          export TWINE_USERNAME="$TWINE_TESTUSERNAME"
+          export TWINE_PASSWORD="$TWINE_TESTPASSWORD"
+        else:
+          SERVER="${{ secrets.PYPI_SERVER }}"
+          export TWINE_USERNAME="${{ secrets.TESTPYPI_USERNAME }}"
+          export TWINE_PASSWORD="${{ secrets.TESTPYPI_PASSWORD }}"
+
         echo "TRIGGERED FROM RELEASE PUBLISH TO PYPI"
-        rel-easy publish
+        echo rel-easy publish -r $SERVER
     - name: Archive production artifacts
       uses: actions/upload-artifact@v2
       with:
