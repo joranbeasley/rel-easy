@@ -90,7 +90,7 @@ jobs:
       if: ${{ steps.ident.outputs.IS_RELEASE   }}
       run: |    # this will push the change back up to git
         git config --global user.email "releasy@email.com"
-        git config --global user.name "AutoDeploy Script"
+        git config --global user.name "Rel-Easy AutoDeploy Script"
         git add rel_easy/version.py
         git commit -m "Updated Verion to ${{ steps.ident.outputs.VERSION }} And Released build to PyPi"
         git push
