@@ -67,14 +67,17 @@ jobs:
           SERVER="testpypi"
           export TWINE_USERNAME="$TWINE_TESTUSERNAME"
           export TWINE_PASSWORD="$TWINE_TESTPASSWORD"
+          URL="https://test.pypi.org/simple/rel-easy/"
         else
           SERVER="${{ secrets.PYPI_SERVER }}"
+          URL="https://pypi.org/simple/rel-easy/"
           export TWINE_USERNAME="${{ secrets.TESTPYPI_USERNAME }}"
           export TWINE_PASSWORD="${{ secrets.TESTPYPI_PASSWORD }}"
         fi
         echo "TRIGGERED FROM RELEASE PUBLISH TO PYPI"
         rel-easy publish -r $SERVER
-        echo "::warning file=rel-easy-$VER:: Published ${{ steps.ident.outputs.VERSION }} to $SERVER\nhttps://pypi.org/simple/rel-easy/"
+
+        echo "::warning file=rel-easy-$VER:: Published ${{ steps.ident.outputs.VERSION }} to $SERVER\n$URL"
     - name: Archive production artifacts
       uses: actions/upload-artifact@v2
       with:
