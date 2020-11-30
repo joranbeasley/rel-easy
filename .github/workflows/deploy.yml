@@ -51,11 +51,12 @@ jobs:
       env:
         TWINE_USERNAME: ${{ secrets.TESTPYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
+        SERVER: ${{ secrets.TESTPYPY_SERVER }}
       run: |
         if [[ "$TWINE_USERNAME" == "" ]]; then
           echo "::error :: unable to deploy without setting TESTPYPI_USERNAME and TESTPYPI_PASSWORD in the project settings"
         fi
-        SERVER=${${{ secrets.TESTPYPY_SERVER }}:-testpypi}
+        SERVER=${SERVER:=pypy}
         echo "::error ::DEPLOY TO testpypi, since this was manually triggered"
         echo rel-easy publish -r $SERVER
 
