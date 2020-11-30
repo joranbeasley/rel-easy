@@ -47,32 +47,27 @@ jobs:
         echo "RELEASE: $TAG"
         rel-easy setver --version $TAG --sha1
 
-    - name: FAKE Build and publish
+    - name: TEST Build and publish
       if: ${{ steps.ident.outputs.IS_TEST }}
+      env:
+        TWINE_USERNAME: ${{ secrets.TESTPYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
       run: |
-        echo "SKIP DEPLOY STEP SINCE WE ARE JUST FAKING IT"
-        echo "::error ::DEPLOY STEP SKIPPED, since this was manually triggered"
-        rel-easy publish --build-only
+        if [[ "$TWINE_USERNAME" == "" ]]; then
+          echo "::error :: unable to deploy without setting TESTPYPI_USERNAME and TESTPYPI_PASSWORD in the project settings"
+        fi
+        echo "::error ::DEPLOY TO testpypi, since this was manually triggered"
+        rel-easy publish -r testpypi
 
     - name: Build and publish
-      # if: ${{ steps.ident.outputs.IS_RELEASE }}
+      if: ${{ steps.ident.outputs.IS_RELEASE }}
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        TWINE_TESTUSERNAME: ${{ secrets.TESTPYPI_USERNAME }}
-        TWINE_TESTPASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
       run: |
         VER=${{ steps.ident.outputs.VERSION }}
-        if [[ "${{ secrets.PYPI_SERVER }}" == "" ]]; then
-          SERVER="testpypi"
-          export TWINE_USERNAME="$TWINE_TESTUSERNAME"
-          export TWINE_PASSWORD="$TWINE_TESTPASSWORD"
-          URL="https://test.pypi.org/simple/rel-easy/"
-        else
-          SERVER="${{ secrets.PYPI_SERVER }}"
-          URL="https://pypi.org/simple/rel-easy/"
-          export TWINE_USERNAME="${{ secrets.TESTPYPI_USERNAME }}"
-          export TWINE_PASSWORD="${{ secrets.TESTPYPI_PASSWORD }}"
+        if [[ "$TWINE_USERNAME" == "" ]]; then
+          echo "::error :: unable to deploy without setting PYPI_USERNAME and PYPI_PASSWORD in the project settings"
         fi
         echo "TRIGGERED FROM RELEASE PUBLISH TO PYPI"
         rel-easy publish -r $SERVER
