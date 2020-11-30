@@ -14,11 +14,11 @@ from rel_easy.util import find_package_paths, path_to_package_candidate, create_
 
 
 def click_promptChoice(*choices,**kwds):
-    print("K:",kwds)
+    # print("K:",kwds)
     default = kwds.pop('default',None),
     if isinstance(default,(list,tuple)) and len(default)==1:
         default = default[0]
-    print("D:",default)
+    # print("D:",default)
     prompt = kwds.pop('prompt',"Select One")
     prompt = "  "+ "\n  ".join("%d. %s"%(i,c) for i,c in enumerate(choices,1))  +"\n%s"%prompt
     # print("D:",default)
@@ -243,12 +243,15 @@ def _initialize_setup_py_kwds(kwds):
             data['pkg_email'] = click.prompt("--email", default=data['pkg_email'])
     return data
 
-@cli.group("pip",invoke_without_command=True)
+
+@cli.group("pip-config",invoke_without_command=True)
 @click.pass_context
 def cli2(ctx):
     # print("G2",ctx)
     if not ctx.invoked_subcommand:
-        print("SHOW MENU")
+        print_install_servers()
+        result = click_promptChoice("Add a New Server","Delete A Server","quit")
+        print("R:",result)
 @cli2.command("add-server")#"config-install-servers",help="add an install server for pip to pull from")
 @click.argument("url",type=str)
 @click.option("-y","--yes",is_flag=True)
@@ -283,7 +286,10 @@ def del_install_server(url=None,yes=False):
 
 @cli2.command("list-servers")#"config-install-servers",help="add an install server for pip to pull from")
 # @click.argument("url",type=str)
-def list_install_server():
+def list_servers():
+    return print_install_servers()
+
+def print_install_servers():
     from pip._internal.models.index import PyPI
     urls = pip_get_conf_servers('extra-index-url','index-url')
     print("U:",urls)
