@@ -60,6 +60,7 @@ jobs:
         fi
         SERVER=${SERVER:-testpypy}
         echo "::error ::DEPLOY TO ${SERVER}, since this was manually triggered"
+        echo rel-easy publish -r $SERVER
         rel-easy publish -r $SERVER
 
     - name: Build and publish
