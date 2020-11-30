@@ -19,7 +19,7 @@ setuptools.setup(
         "rel_easy": ["DATA/*.tmpl"]}
     ,
     # uncomment for auto install requirements
-    install_requires=['click','six'],
+    install_requires=['click','six',"twine"],
     # uncomment for classifiers
     classifiers=[
        "Programming Language :: Python :: 3",
