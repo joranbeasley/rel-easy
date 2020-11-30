@@ -29,5 +29,5 @@ jobs:
         git diff -U @~..@ | flake8 --diff --tee .lint.DIFF.new.txt
     - name: Lint ALL
       run: |
-        flake8 rel_easy --tee .lint.ALL.new.txt
+        flake8 rel_easy --tee --output-file .lint.ALL.new.txt
 

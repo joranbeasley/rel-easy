@@ -8,7 +8,7 @@ import click
 
 from rel_easy import SemVersion
 from rel_easy.util import find_package_paths, path_to_package_candidate, create_setup_py, get_or_prompt, \
-    seperate_name_and_email, build_and_clean, pypi_upload, create_version_file, temp_cwd, pypirc_parse_config, \
+    separate_name_and_email, build_and_clean, pypi_upload, create_version_file, temp_cwd, pypirc_parse_config, \
     pypirc_save_config_dict, pip_add_extra_index_url_to_conf, pip_get_conf_servers, pip_get_conf_path, \
     pip_delete_index_url_from_conf, pypirc_remove_section, pypirc_add_section_to_config
 
@@ -241,7 +241,7 @@ def _initialize_setup_py_kwds(kwds):
     pkg_desc = get_or_prompt(kwds, '--description', "yes", "This is just some project", click.prompt),
     pkg_author = get_or_prompt(kwds, '--author', "yes", "anony mouse <anyone@email.com>", click.prompt)
     )
-    pkg = seperate_name_and_email(data['pkg_author'])
+    pkg = separate_name_and_email(data['pkg_author'])
     data['pkg_author'] = pkg['author']
     data['pkg_email'] = pkg.get('email', None) or kwds.get('email', None)
     if not data['pkg_email']:
