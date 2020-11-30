@@ -24,7 +24,11 @@ jobs:
     - name: Install Dependencies
       run: |
         pip install flake8
-    - name: Lint DIFF Only
+    - name: Lint Critical Errors
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 --select=E9,F63,F7,F82 --disable-noqa
+    - name: Lint Commit DIFF Only
       run: |
         git diff -U @~..@ | flake8 --diff --tee .lint.DIFF.new.txt
     - name: Lint ALL

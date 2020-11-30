@@ -2,7 +2,6 @@ import operator
 import re
 
 
-
 class SemVersion:
     """
 
@@ -22,7 +21,9 @@ class SemVersion:
     True
 
     """
-    version_re = re.compile("(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<build>\d+)(?P<extra>[^ \d][0-9a-zA-Z]*)?)?")
+    version_re = re.compile(r"(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<build>\d+)"
+                            r"(?P<extra>[^ \d][0-9a-zA-Z]*)?)?")
+
     @staticmethod
     def from_string(s):
         """
@@ -36,8 +37,9 @@ class SemVersion:
         """
         match = SemVersion.version_re.search(s)
         if not match:
-            raise TypeError("cannot parse %r to version"%(s,))
-        return SemVersion(match.group('major'),match.group('minor'),match.group('build'),match.group("extra"))
+            raise TypeError("cannot parse %r to version" % (s,))
+        data = match.groupdict()
+        return SemVersion(data['major'], match['minor'], data['build'], data["extra"])
 
     # def __lt__(self, other):
     #     return self.__cmp__("lt",other)
@@ -51,14 +53,16 @@ class SemVersion:
     #     :return:
     #     """
     #     return self.__cmp__("gt",other)
-    def __init__(self,major,minor,build,extra=""):
-        self.version_tuple = [0,0,0]
+    def __init__(self, major, minor, build, extra=""):
+        self.version_tuple = [0, 0, 0]
         self.extra_tag = ""
         self.__init_cmp()
-        self.set(major,minor,build,extra)
+        self.set(major, minor, build, extra)
+
     @property
     def major(self):
         return self.version_tuple[0]
+
     @property
     def minor(self):
         return self.version_tuple[1]
@@ -66,25 +70,28 @@ class SemVersion:
     @property
     def build(self):
         return self.version_tuple[2]
-    def set(self,major=None,minor=None,build=None,extra=""):
+
+    def set(self, major=None, minor=None, build=None, extra=""):
         self.version_tuple = (int(major or self.version_tuple[0]),
                               int(minor or self.version_tuple[1]),
                               int(build or self.version_tuple[1]))
         self.extra_tag = extra or self.extra_tag
-        self.version = "{0}.{1}.{2}{extra}".format(*self.version_tuple,extra=self.extra_tag)
+        self.version = "{0}.{1}.{2}{extra}".format(*self.version_tuple, extra=self.extra_tag)
 
     def __init_cmp(self):
-        for c in ['lt','le','gt','ge']:
-            def cmp_it(a=None,b=None,method=c):
-                return a.__cmp__(method,b)
-            setattr(self.__class__,'__%s__'%c,cmp_it)
+        for c in ['lt', 'le', 'gt', 'ge']:
+            def cmp_it(a=None, b=None, method=c):
+                return a.__cmp__(method, b)
 
+            setattr(self.__class__, '__%s__' % c, cmp_it)
 
     def __str__(self):
         return self.version
+
     def __repr__(self):
-        return "<SemVersion ver='%s'/>"%(self,)
-    def __eq__(self,other):
+        return "<SemVersion ver='%s'/>" % (self,)
+
+    def __eq__(self, other):
         """
         >>> SemVersion(1,2,3) == 1
         True
@@ -98,25 +105,27 @@ class SemVersion:
         True
         """
         other = self.get_version_tuple_from_object(other)
-        if isinstance(other,(list,tuple)):
-            for a,b in zip(self.version_tuple,other):
+        if isinstance(other, (list, tuple)):
+            for a, b in zip(self.version_tuple, other):
                 if a != b:
                     return False
             return True
         return self.__cmp__(other)
-    def get_version_tuple_from_object(self,other):
+
+    def get_version_tuple_from_object(self, other):
         import six
         # print("CONVERT:",repr(other))
         if isinstance(other, (bytes, six.string_types)):
-            other = [int(x) for x in other.split(".",4)[:3]]
-        if isinstance(other, (list,tuple)):
+            other = [int(x) for x in other.split(".", 4)[:3]]
+        if isinstance(other, (list, tuple)):
             other = tuple(int(i) for i in other[:3])
-        if isinstance(other,SemVersion):
+        if isinstance(other, SemVersion):
             other = other.version_tuple
-        if isinstance(other,int):
+        if isinstance(other, int):
             other = (other,)
         return other
-    def __cmp__(self,fn_name,other):
+
+    def __cmp__(self, fn_name, other):
         """
         >>> s=SemVersion(1,2,3)
         >>> s == 1
@@ -138,7 +147,7 @@ class SemVersion:
         """
         # print(repr(self),repr(fn_name),repr(other))
         other = self.get_version_tuple_from_object(other)
-        result = getattr(operator,fn_name)(self.version_tuple,other)
+        result = getattr(operator, fn_name)(self.version_tuple, other)
         # print("CMP:",fn_name,repr(self),repr(other),"=>",result)
         return result
         # if not isinstance(other,(list,tuple)):

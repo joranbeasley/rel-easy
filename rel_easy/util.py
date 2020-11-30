@@ -11,7 +11,9 @@ from contextlib import contextmanager
 isidentifier = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$").match
 
 # precompile regex
-AUTHOR_RE_PATTERN = re.compile("([^ ]+)\s+([^ ]+)?\s*<?\s*([^\s]+@[^\s]+\.[^\s]+)\s*>\s*")
+AUTHOR_RE_PATTERN = re.compile(r"([^ ]+)\s+([^ ]+)?\s*<?\s*([^\s]+@[^\s]+\.[^\s]+)\s*>\s*")
+
+
 def path_to_package_candidate(path):
     pdir = os.path.dirname(path)
     pname = os.path.basename(path)
@@ -37,7 +39,7 @@ def find_package_paths(cwd, ignore_patterns=("venv",)):
             continue
         seen.add(curdir)
         pname = os.path.basename(curdir)
-        pdir = os.path.dirname(curdir)
+        # pdir = os.path.dirname(curdir)
 
         files = os.listdir(curdir)
         # print(" CheckFILES:",files)
@@ -150,15 +152,18 @@ def pip_delete_index_url_from_conf(url):
         ix_list.remove(url)
         pip_save_config_dict(data)
     else:
-        raise ValueError("unable to find url %s in index-urls:\nLooked In %s" % (url, pip_get_conf_path()))
+        fmt = "unable to find url %s in index-urls:\nLooked In %s"
+        raise ValueError(fmt % (url, pip_get_conf_path()))
 
 
 def pip_add_extra_index_url_to_conf(url):
     data = pip_parse_conf()
     data.setdefault('global', {}).setdefault('extra-index-url', None)
     if not isinstance(data['global']['extra-index-url'], list):
-        data['global']['extra-index-url'] = ['', data['global']['extra-index-url']] if data['global'][
-            'extra-index-url'] else ['']
+        if data['global']['extra-index-url']:
+            data['global']['extra-index-url'] = ['', data['global']['extra-index-url']]
+        else:
+            data['global']['extra-index-url'] = ['']
     if url not in data['global']['extra-index-url']:
         data['global']['extra-index-url'].append(url)
         pip_save_config_dict(data)
@@ -291,15 +296,20 @@ def build_package(package_dir):
 def build_and_clean(package_dir):
     pkg_dir = package_dir['package_dir']
     new_files = build_package(pkg_dir)
-    shutil.rmtree(os.path.join(pkg_dir, "build"), ignore_errors=True)
-    shutil.rmtree(os.path.join(pkg_dir, "%s.egg-info" % (package_dir['package'])), ignore_errors=True)
-    shutil.rmtree(os.path.join(pkg_dir, package_dir['package'], "__pycache__"), ignore_errors=True)
+    folders_to_remove = [
+        os.path.join(pkg_dir, "build"),
+        os.path.join(pkg_dir, "%s.egg-info" % (package_dir['package'])),
+        os.path.join(pkg_dir, package_dir['package'], "__pycache__")
+    ]
+    for folder in folders_to_remove:
+        shutil.rmtree(folder, ignore_errors=True)
     return new_files
+
 
 def create_version_file(package, package_dir, verString, sha_hash="", **kwds):
     ppath = os.path.join(package_dir, package)
-    pi1 = open(os.path.join(ppath, "__init__.py"), "r").read()
-    pi2 = re.sub("", "", pi1)
+    # pi1 = open(os.path.join(ppath, "__init__.py"), "r").read()
+    # pi2 = re.sub("", "", pi1)
     with open(os.path.join(ppath, "version.py"), "w") as f:
         if sha_hash and re.match("^[0-9a-fA-F]+$", sha_hash.strip()):
             sha_hash = "__hash__ = \"%s\"" % sha_hash
@@ -344,6 +354,7 @@ def get_or_prompt(kwds, option, bypass_prompt, default, prompt_fn):
 
 def separate_name_and_email(s):
     pkg = {'email': None}
+
     def matcher(m):
         name = " ".join(map(str.title, m.groups()[:2]))
         pkg['email'] = m.group(3)
