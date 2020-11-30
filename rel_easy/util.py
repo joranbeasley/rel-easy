@@ -189,6 +189,19 @@ def pypirc_save_config_dict(d, fpath=os.path.expanduser("~/.pypirc")):
 # d['distutils']['index-servers'] = '\n'.join(d['distutils']['index-servers'])
 # c = configparser.ConfigParser()
 # c.read_dict(d)
+def pypirc_remove_section(cfg, sectionName):
+    if cfg is None:
+        cfg = configparser.ConfigParser()
+        cfg.read(os.path.expanduser("~/.pypirc"))
+    if sectionName not in cfg:
+        raise TypeError("Unable to get section: %s"%sectionName)
+    ix_urls = cfg['distutils'].get('index-servers', "").splitlines()
+    cfg.remove_section(sectionName)
+    if sectionName in ix_urls:
+        ix_urls.remove(sectionName)
+        cfg['distutils']['index-servers'] = "\n".join(ix_urls)
+    pypirc_save_config(cfg)
+
 def pypirc_add_section_to_config(cfg, sectionName, **sectionDef):
     if cfg is None:
         cfg = configparser.ConfigParser()

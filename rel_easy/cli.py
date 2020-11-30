@@ -10,7 +10,7 @@ from rel_easy import SemVersion
 from rel_easy.util import find_package_paths, path_to_package_candidate, create_setup_py, get_or_prompt, \
     seperate_name_and_email, build_and_clean, pypi_upload, create_version_file, temp_cwd, pypirc_parse_config, \
     pypirc_save_config_dict, pip_add_extra_index_url_to_conf, pip_get_conf_servers, pip_get_conf_path, \
-    pip_delete_index_url_from_conf, pypirc_remove_section
+    pip_delete_index_url_from_conf, pypirc_remove_section, pypirc_add_section_to_config
 
 
 def click_promptChoice(*choices,**kwds):
@@ -319,116 +319,76 @@ def print_install_servers():
 def cli3(ctx):
     # print("G2",ctx)
     if not ctx.invoked_subcommand:
-        print_install_servers()
-        result = click_promptChoice("Add a New Server","Delete A Server","quit")[1]
-        if result == "quit":
-            print("OK QUIT")
-            exit(0)
-        if result == "Add a New Server":
-            print("ADDD??")
-            sys.argv.remove('pip-config')
-            add_server()
-        elif result == "Delete A Server":
-            print("DELETE???")
-            sys.argv.remove('pip-config')
-            del_server()
+        pypi_wizard()
 
-@cli3.command("wizzard",help="guided menu for configuring deploy servers")
-def wizzard():
+def pypi_wizard():
     data = pypirc_parse_config()
-    servers = data.get('distutils', {'index-servers': ['']})['index-servers'][1:]
+    servers = print_servers("  [ N. NEW ]  [ D. DEL ]  [ X. EXIT ]")
     choices = ['n','d','x']
-    aliases = {}
-    if len(servers):
-        click.echo("Servers To Push Python Packages To")
-        click.echo("  {0:<20s}".format("[ N. NEW ]  [ D. DEL ]  [ X. EXIT ]"))
-        click.echo("  alias               | url")
-        click.echo("  --------------------+----------------------")
-        for i,server in enumerate(servers,1):
-            d = data.get(server, {})
-            url = d.get('repository', "*INTERNAL  CREDS ONLY*")
-            if len(url) > 49:
-                url = "...".join([url[:18], url[-30:]])
-            if d.get("username"):
-                url = "//******@".join(url.split("//", 1))
-            choices.append(str(i))
-            aliases[str(i)] = server
-            click.echo("  {0: 2d}. {1:<16s}| {2}".format(i,server, url))
-        result = click.prompt("Choose an item to Edit or N,D,X",show_choices=False,
-                              type=click.Choice(choices,case_sensitive=False))
-        editing = False
-        alias2 = None
-        if result.isdigit():
-            alias2 = {
-                'name':aliases.get(result,None),
-            }
-            editing = alias2['name'] is not None
-            alias2['data'] =  data.get(alias2['name'], {})
-            result = "n"
-        if result[0] == "n":
-            if alias2 is None:
-                alias = click.prompt("enter alias name for server")
-            else:
-                alias = alias2['name']
-                click.echo("EDITING: %s"%alias)
-            d = {'r':{},'u':{},'p':{}}
-            if editing:
-                d = {'r':{'default': alias2['data'].get('repository','')},
+    choices.extend(map(str,range(1,len(servers)+1)))
+    result = click.prompt("Choose an item to Edit or N,D,X",show_choices=False,
+                          type=click.Choice(choices,case_sensitive=False))
+    editing = False
+    alias2 = None
+    if result.isdigit():
+        alias2 = {
+            'name':servers[int(result)-1],
+        }
+        editing = alias2['name'] is not None
+        alias2['data'] =  data.get(alias2['name'], {})
+        result = "n"
+    if result[0] == "n":
+        if alias2 is None:
+            alias = click.prompt("enter alias name for server")
+        else:
+            alias = alias2['name']
+            click.echo("EDITING: %s"%alias)
+        d = {'r':{},'u':{},'p':{}}
+        if editing:
+            d = {'r':{'default': alias2['data'].get('repository','')},
                      'u':{'default': alias2['data'].get('username','')},
                      'p':{'default': alias2['data'].get('password','')},
-                     }
-            repository = None
-            if alias not in {'pypi','testpypi'}:
-                repository = click.prompt("enter repository url for server", **d['r'])
-            alias_data = dict(
+                 }
+        repository = None
+        if alias not in {'pypi','testpypi'}:
+            repository = click.prompt("enter repository url for server", **d['r'])
+        alias_data = dict(
                 username= click.prompt("repository username",**d['u']),
                 password= click.prompt("repository password",**d['p'])
             )
-            if repository:
-                alias_data['repository'] = repository
-            if not editing:
-                data['distutils']['index-servers'].append(alias)
-            data.setdefault(alias,{}).update({k:v for k,v in alias_data.items() if v})
-            msg = "Are you sure you wish to add this repository?"
-            if editing:
-                msg = msg[:25]+"finalize editing of server:%s ?"%(alias)
-            if click.confirm(msg):
-                pypirc_save_config_dict(data)
-                if not editing and alias not in ['pypi','testpypy']:
-                    if click.confirm("Would you like to add a corresponding extra-index-url for pip install?"):
-                        joiner = "://%s:%s@"%(alias_data['username'],alias_data['token'])
-                        uri = joiner.join(alias_data['repository'].split("://"))
-                        pip_add_extra_index_url_to_conf(uri)
-        elif result[0] == "d":
-            print("DELETE")
-            click.echo("Servers To Push Python Packages To")
-            click.echo("  SELECT ITEM TO DELETE (or 'x' to exit)")
-            click.echo("  alias               | url")
-            click.echo("  --------------------+----------------------")
-            choices = ['x']
-            for i, server in enumerate(servers, 1):
-                d = data.get(server, {})
-                url = d.get('repository', "*INTERNAL  !CANNOT DELETE!*")
-                if len(url) > 49:
-                    url = "...".join([url[:18], url[-30:]])
-                if d.get("username"):
-                    url = "//******@".join(url.split("//", 1))
-                choices.append(str(i))
-                aliases[str(i)] = server
-                click.echo("  {0: 2d}. {1:<16s}| {2}".format(i, server, url))
-            result = click.prompt("Choose an item to DELETE", show_choices=False,
+        if repository:
+            alias_data['repository'] = repository
+        if not editing:
+            data['distutils']['index-servers'].append(alias)
+        data.setdefault(alias,{}).update({k:v for k,v in alias_data.items() if v})
+        msg = "Are you sure you wish to add this repository?"
+        if editing:
+            msg = msg[:25]+"finalize editing of server:%s ?"%(alias)
+        if click.confirm(msg):
+            pypirc_save_config_dict(data)
+            if not editing and alias not in ['pypi','testpypy']:
+                if click.confirm("Would you like to add a corresponding extra-index-url for pip install?"):
+                    joiner = "://%s:%s@"%(alias_data['username'],alias_data['token'])
+                    uri = joiner.join(alias_data['repository'].split("://"))
+                    pip_add_extra_index_url_to_conf(uri)
+    elif result[0] == "d":
+        servers = print_servers("SELECT ITEM TO DELETE (or 'x' to exit)",show_counts=True)
+        choices = ['x']
+        choices.extend(map(str,range(1,len(servers)+1)))
+        result = click.prompt("Choose an item to DELETE", show_choices=False,
                                   type=click.Choice(choices, case_sensitive=False))
-            alias = aliases[result]
+        alias = servers[int(result)-1]
 
-            if alias in {"pypi","testpypi"}:
-                click.echo("You CANNOT DELETE %s"%alias)
-                exit(0)
-            if click.confirm("Are you sure you wish to delete %s "%alias):
-                pypirc_remove_section(None,alias)
-                print("Removed:",alias)
-        elif result[0] == "x":
-            click.echo("GoodBye")
+
+        if alias in {"pypi","testpypi"}:
+            click.echo("You CANNOT DELETE %s"%alias)
             exit(0)
+        if click.confirm("Are you sure you wish to delete %s "%alias):
+            pypirc_remove_section(None,alias)
+            print("Removed:",alias)
+    elif result[0] == "x":
+        click.echo("GoodBye")
+        exit(0)
 
 @cli3.command("del-server",help="setup and configure your deploy credentials and servers for pypi")
 @click.option("-a","--alias",prompt=True)
@@ -441,27 +401,39 @@ def delete_pypirc_alias(alias):
 @click.option("-u","--username",prompt=True)
 @click.option("-p","--password",prompt=True)
 def add_pypirc_alias(alias,**kwds):
-    pass
+    pypirc_add_section_to_config(**kwds)
+    print_servers()
 
+def print_servers(prompt="",show_counts=False):
+    data = pypirc_parse_config()
+    servers = data.get('distutils', {'index-servers': ['']})['index-servers'][1:]
+    sz = 20
+    ct_fmt = ""
+    if show_counts:
+        sz = 17
+        ct_fmt="{0: 2d}."
+
+    if len(servers):
+        click.echo("Servers To Push Python Packages To")
+        if prompt:
+            click.echo(prompt)
+        click.echo("  alias          | url")
+        click.echo("  ---------------+----------------------")
+        for i,server in enumerate(servers):
+            d = data.get(server, {})
+            url = d.get('repository', "*INTERNAL  CREDS ONLY*")
+            if len(url) > 49:
+                url = "...".join([url[:18], url[-30:]])
+            if d.get("username"):
+                url = "//******@".join(url.split("//", 1))
+            click.echo("  {ct_fmt}{0:<{1}s}| {2}".format(server, sz, url,ct_fmt=ct_fmt.format(i)))
+    else:
+        click.echo("No Servers found ... ")
+    return servers
 
 @cli3.command("list-servers",help="list pypi servers configured for uploading")
 def list_pypirc_aliases():
-    data = pypirc_parse_config()
-    servers = data.get('distutils', {'index-servers': ['']})['index-servers'][1:]
-    if len(servers):
-        click.echo("Servers To Push Python Packages To")
-        click.echo("  alias          | url")
-        click.echo("  ---------------+----------------------")
-        for server in servers:
-            d = data.get(server,{})
-            url = d.get('repository',"*INTERNAL  CREDS ONLY*")
-            if len(url) > 49:
-                url = "...".join([url[:18],url[-30:]])
-            if d.get("username"):
-                url = "//******@".join(url.split("//",1))
-            click.echo("  {0:<20s}| {1}".format(server,url))
-    else:
-        click.echo("No Servers found ... ")
+    print_servers()
 def configure_pypirc():
     pip_add_extra_index_url_to_conf("adsa")
     while True:
