@@ -77,7 +77,7 @@ def rev(major,minor,build,extra,**kwds):
     package, package_dir = kwds['package_dir']['package'], kwds['package_dir']['package_dir']
     oldDir = os.getcwd()
     os.chdir(package_dir)
-    pkg = importlib.import_module(package+".version","version")
+    pkg =importlib.import_module(package+".version","version")
     os.chdir(oldDir)
     otherVer = SemVersion.from_string(pkg.__version__)
     otherVer.extra_tag = extra

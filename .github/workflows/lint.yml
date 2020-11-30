@@ -22,4 +22,11 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install Dependencies
       run: |
+        pip install flake8
+    - name: Lint DIFF Only
+      run: |
+        git diff -U @~..@ | flake8 --diff --tee .lint.DIFF.new.txt
+    - name: Lint ALL
+      run: |
+        flake8 rel_easy --tee .lint.ALL.new.txt
 
