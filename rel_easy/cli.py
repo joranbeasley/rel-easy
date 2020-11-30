@@ -250,13 +250,24 @@ def cli2(ctx):
     # print("G2",ctx)
     if not ctx.invoked_subcommand:
         print_install_servers()
-        result = click_promptChoice("Add a New Server","Delete A Server","quit")
-        print("R:",result)
+        result = click_promptChoice("Add a New Server","Delete A Server","quit")[1]
+        if result == "quit":
+            print("OK QUIT")
+            exit(0)
+        if result == "Add a New Server":
+            print("ADDD??")
+            sys.argv.remove('pip-config')
+            add_server()
+        elif result == "Delete A Server":
+            print("DELETE???")
+            sys.argv.remove('pip-config')
+            del_server()
 @cli2.command("add-server")#"config-install-servers",help="add an install server for pip to pull from")
-@click.argument("url",type=str)
+@click.option("--url",type=str,default=None,prompt=True)
 @click.option("-y","--yes",is_flag=True)
+def add_server(url=None,yes=False):
+    add_install_server(url,yes)
 def add_install_server(url,yes=False):
-    print("ADD:",url)
     if not yes:
         if not click.confirm("Are you sure you want to add: %s"%url):
             print("OK not adding server")
@@ -264,8 +275,10 @@ def add_install_server(url,yes=False):
     pip_add_extra_index_url_to_conf(url)
 
 @cli2.command("del-server")#"config-install-servers",help="add an install server for pip to pull from")
-@click.argument("url",required=False,type=str,default=None)
+@click.option("--url",type=str,default=None)
 @click.option("-y","--yes",is_flag=True,default=False)
+def del_server(url=None,yes=False):
+    del_install_server(url,yes)
 def del_install_server(url=None,yes=False):
     print("DEL:",url)
     if not url:
@@ -292,14 +305,138 @@ def list_servers():
 def print_install_servers():
     from pip._internal.models.index import PyPI
     urls = pip_get_conf_servers('extra-index-url','index-url')
-    print("U:",urls)
+    # print("U:",urls)
     urls['index-url'] = ["[LOCKED] "+PyPI.simple_url] if len(urls.get('index-url',[])) < 2 else urls['index-url'][1:]
     urls['extra-index-url'] = ["<No Extra URLS>"] if len(urls['extra-index-url']) < 2 else urls['extra-index-url'][1:]
     click.echo("conf: %s"%(pip_get_conf_path(),))
     click.echo("index-url:\n - "+"\n - ".join(urls['index-url']))
     click.echo("extra-index-url:\n - "+"\n - ".join(urls['extra-index-url']))
 
-@cli.command("config-deploy-servers",help="setup and configure your deploy keys and servers for pypi")
+
+
+@cli.group("config-deploy",invoke_without_command=True)
+@click.pass_context
+def cli3(ctx):
+    # print("G2",ctx)
+    if not ctx.invoked_subcommand:
+        print_install_servers()
+        result = click_promptChoice("Add a New Server","Delete A Server","quit")[1]
+        if result == "quit":
+            print("OK QUIT")
+            exit(0)
+        if result == "Add a New Server":
+            print("ADDD??")
+            sys.argv.remove('pip-config')
+            add_server()
+        elif result == "Delete A Server":
+            print("DELETE???")
+            sys.argv.remove('pip-config')
+            del_server()
+
+@cli3.command("wizzard",help="guided menu for configuring deploy servers")
+def wizzard():
+    data = pypirc_parse_config()
+    servers = data.get('distutils', {'index-servers': ['']})['index-servers'][1:]
+    choices = ['n','d','x']
+    aliases = {}
+    if len(servers):
+        click.echo("Servers To Push Python Packages To")
+        click.echo("  {0:<20s}".format("[ N. NEW ]  [ D. DEL ]  [ X. EXIT ]"))
+        click.echo("  alias               | url")
+        click.echo("  --------------------+----------------------")
+        for i,server in enumerate(servers,1):
+            d = data.get(server, {})
+            url = d.get('repository', "*INTERNAL  CREDS ONLY*")
+            if len(url) > 49:
+                url = "...".join([url[:18], url[-30:]])
+            if d.get("username"):
+                url = "//******@".join(url.split("//", 1))
+            choices.append(str(i))
+            aliases[str(i)] = server
+            click.echo("  {0: 2d}. {1:<16s}| {2}".format(i,server, url))
+        result = click.prompt("Choose an item to Edit or N,D,X",show_choices=False,
+                              type=click.Choice(choices,case_sensitive=False))
+        editing = False
+        alias2 = None
+        if result.isdigit():
+            alias2 = {
+                'name':aliases.get(result,None),
+            }
+            editing = alias2['name'] is not None
+            alias2['data'] =  data.get(alias2['name'], {})
+            result = "n"
+        if result[0] == "n":
+            if alias2 is None:
+                alias = click.prompt("enter alias name for server")
+            else:
+                alias = alias2['name']
+            d = {'r':{},'u':{},'p':{}}
+            if editing:
+                d = {'r':{'default': alias2['data'].get('repository','')},
+                     'u':{'default': alias2['data'].get('username','')},
+                     'p':{'default': alias2['data'].get('password','')},
+                     }
+            print(":D:",d)
+            repository = None
+            if alias not in {'pypi','testpypi'}:
+                repository = click.prompt("enter repository url for server", **d['r'])
+            alias_data = dict(
+                username= click.prompt("repository username",**d['u']),
+                password= click.prompt("repository password",**d['p'])
+            )
+            if repository:
+                alias_data['repository'] = repository
+            if not editing:
+                data['distutils']['index-servers'].append(alias)
+            data.setdefault(alias,{}).update({k:v for k,v in alias_data.items() if v})
+            msg = "Are you sure you wish to add this repository?"
+            if editing:
+                msg = msg[:25]+"finalize editing of server:%s ?"%(alias)
+            if click.confirm(msg):
+                pypirc_save_config_dict(data)
+                if not editing and alias not in ['pypi','testpypy']:
+                    if click.confirm("Would you like to add a corresponding extra-index-url for pip?"):
+                        joiner = "://%s:%s@"%(alias_data['username'],alias_data['token'])
+                        uri = joiner.join(alias_data['repository'].split("://"))
+                        pip_add_extra_index_url_to_conf(uri)
+        elif result[0] == "d":
+            print("DELETE")
+        elif result[0] == "x":
+            click.echo("GoodBye")
+            exit(0)
+
+@cli3.command("del-server",help="setup and configure your deploy credentials and servers for pypi")
+@click.option("-a","--alias",prompt=True)
+def delete_pypirc_alias(alias):
+    print("DELETE ALIAS",alias)
+
+@cli3.command("add-server",help="setup and configure your deploy credentials and servers for pypi")
+@click.option("-a","--alias",prompt=True)
+@click.option("-r","--repository",prompt=True)
+@click.option("-u","--username",prompt=True)
+@click.option("-p","--password",prompt=True)
+def add_pypirc_alias(alias,**kwds):
+    pass
+
+
+@cli3.command("list-servers",help="list pypi servers configured for uploading")
+def list_pypirc_aliases():
+    data = pypirc_parse_config()
+    servers = data.get('distutils', {'index-servers': ['']})['index-servers'][1:]
+    if len(servers):
+        click.echo("Servers To Push Python Packages To")
+        click.echo("  alias          | url")
+        click.echo("  ---------------+----------------------")
+        for server in servers:
+            d = data.get(server,{})
+            url = d.get('repository',"*INTERNAL  CREDS ONLY*")
+            if len(url) > 49:
+                url = "...".join([url[:18],url[-30:]])
+            if d.get("username"):
+                url = "//******@".join(url.split("//",1))
+            click.echo("  {0:<20s}| {1}".format(server,url))
+    else:
+        click.echo("No Servers found ... ")
 def configure_pypirc():
     pip_add_extra_index_url_to_conf("adsa")
     while True:
