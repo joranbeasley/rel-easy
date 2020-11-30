@@ -60,7 +60,7 @@ jobs:
         fi
         SERVER=${SERVER:-testpypy}
         echo "::error ::DEPLOY TO ${SERVER}, since this was manually triggered"
-        echo rel-easy publish -r $SERVER
+        rel-easy publish -r $SERVER
 
     - name: Build and publish
       if: ${{ steps.ident.outputs.IS_RELEASE }}
@@ -77,7 +77,7 @@ jobs:
         fi
         SERVER=${SERVER:=pypi}
         echo "TRIGGERED FROM RELEASE PUBLISH TO $SERVER"
-        echo rel-easy publish -r $SERVER
+        rel-easy publish -r $SERVER
 
         echo "::warning file=rel-easy-$VER:: Published ${{ steps.ident.outputs.VERSION }} to $SERVER"
     - name: Archive production artifacts
