@@ -1,3 +1,4 @@
+name: Lint Package
 on:
   push:
   workflow_dispatch:
@@ -17,7 +18,7 @@ jobs:
     # First Checkout our code
     - uses: actions/checkout@v2
     - name: Setup Python ${{ matrix.python-version }}
-    - uses: actions/setup-python@v2
+      uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install Dependencies
