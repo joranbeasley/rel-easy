@@ -52,6 +52,7 @@ jobs:
       run: |
         echo "SKIP DEPLOY STEP SINCE WE ARE JUST FAKING IT"
         echo "::error ::DEPLOY STEP SKIPPED, since this was manually triggered"
+        rel-easy publish --build-only
 
     - name: Build and publish
       if: ${{ steps.ident.outputs.IS_RELEASE }}
@@ -59,19 +60,12 @@ jobs:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
-        cat releasy/version.py
-        if ! [[ "${{ github.event.inputs.version }}" == "" ]]; then
-          echo "TRIGGERED FROM BUTTON, only build tar, do not deploy"
-          rel-easy publish --build-only
-
-        else
-          echo "TRIGGERED FROM RELEASE PUBLISH TO PYPI"
-          rel-easy publish
-        fi
+        echo "TRIGGERED FROM RELEASE PUBLISH TO PYPI"
+        rel-easy publish
     - name: Archive production artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: dist
+        name: dist-${{ steps.ident.outputs.VERSION }}
         path: |
           dist
     - name: Commit Version File
@@ -80,7 +74,7 @@ jobs:
         git config --global user.email "releasy@email.com"
         git config --global user.name "AutoDeploy Script"
         git add releasy/version.py
-        git commit -m "Updated Verion to ${{ github.event.release.tag_name }} And Released build to PyPi"
+        git commit -m "Updated Verion to ${{ steps.ident.outputs.VERSION }} And Released build to PyPi"
         git push
     - name: Cleanup
       # run any cleanup needed
