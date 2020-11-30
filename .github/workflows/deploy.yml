@@ -53,7 +53,6 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
         SERVER: ${{ secrets.TESTPYPI_SERVER }}
       run: |
-        echo "SECRET: $SERVER"
         if [[ "$TWINE_USERNAME" == "" || "$TWINE_PASSWORD" == "" ]]; then
           echo "::error :: unable to deploy without setting TESTPYPI_USERNAME and TESTPYPI_PASSWORD in the project settings"
           exit 1
@@ -92,7 +91,7 @@ jobs:
       run: |    # this will push the change back up to git
         git config --global user.email "releasy@email.com"
         git config --global user.name "AutoDeploy Script"
-        git add releasy/version.py
+        git add rel_easy/version.py
         git commit -m "Updated Verion to ${{ steps.ident.outputs.VERSION }} And Released build to PyPi"
         git push
     - name: Cleanup
