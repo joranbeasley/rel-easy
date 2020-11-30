@@ -38,7 +38,7 @@ jobs:
           echo "::set-output name=IS_RELEASE::true"
         else
           echo "DEPLOY VIA TEST BUTTON"
-          echo "::set-output name=VERSION::${GITHUB_REF##*/}"
+          echo "::set-output name=VERSION::${{ github.event.inputs.version }}"
           echo "::set-output name=IS_TESTL:true"
         fi
     - name: Update Version
