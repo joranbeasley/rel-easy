@@ -44,6 +44,7 @@ jobs:
     - name: Update Version
       run: |
         TAG=${{ steps.ident.outputs.VERSION }}
+        echo "RELEASE: $TAG"
         rel-easy setver --version $TAG --sha1
 
     - name: FAKE Build and publish
