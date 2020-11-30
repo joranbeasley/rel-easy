@@ -70,7 +70,7 @@ jobs:
           SERVER="${{ secrets.PYPI_SERVER }}"
           export TWINE_USERNAME="${{ secrets.TESTPYPI_USERNAME }}"
           export TWINE_PASSWORD="${{ secrets.TESTPYPI_PASSWORD }}"
-
+        fi
         echo "TRIGGERED FROM RELEASE PUBLISH TO PYPI"
         echo rel-easy publish -r $SERVER
     - name: Archive production artifacts
