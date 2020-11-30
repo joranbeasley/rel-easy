@@ -373,7 +373,7 @@ def pypi_wizard():
             msg = msg[:25]+"finalize editing of server:%s ?"%(alias)
         if click.confirm(msg):
             pypirc_save_config_dict(data)
-            if not editing and alias not in ['pypi','testpypy']:
+            if not editing and alias not in ['pypi','testpypi']:
                 if click.confirm("Would you like to add a corresponding extra-index-url for pip install?"):
                     joiner = "://%s:%s@"%(alias_data['username'],alias_data['token'])
                     uri = joiner.join(alias_data['repository'].split("://"))
@@ -484,7 +484,7 @@ def configure_pypirc():
             data.setdefault(alias,{}).update({k:v for k,v in alias_data.items() if v})
             if click.confirm("Are you sure you wish to add this repository?"):
                 pypirc_save_config_dict(data)
-                if not editing and alias not in ['pypi','testpypy']:
+                if not editing and alias not in ['pypi','testpypi']:
                     if click.confirm("Would you like to add a corresponding extra-index-url for pip?"):
                         joiner = "://%s:%s@"%(alias_data['username'],alias_data['token'])
                         uri = joiner.join(alias_data['repository'].split("://"))

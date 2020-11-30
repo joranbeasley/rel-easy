@@ -58,7 +58,7 @@ jobs:
           echo "::error :: unable to deploy without setting TESTPYPI_USERNAME and TESTPYPI_PASSWORD in the project settings"
           exit 1
         fi
-        SERVER=${SERVER:-testpypy}
+        SERVER=${SERVER:-testpypi}
         echo "::error ::DEPLOY TO ${SERVER}, since this was manually triggered"
         echo rel-easy publish -r $SERVER
         rel-easy publish -r $SERVER
