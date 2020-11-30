@@ -50,7 +50,7 @@ jobs:
       if: ${{ steps.ident.outputs.IS_TEST   }}
       run: |
         echo "SKIP DEPLOY STEP SINCE WE ARE JUST FAKING IT"
-        echo "::error :DEPLOY STEP SKIPPED, since this was manually triggered
+        echo "::error :DEPLOY STEP SKIPPED, since this was manually triggered"
 
     - name: Build and publish
       if: ${{ steps.ident.outputs.IS_RELEASE   }}
@@ -75,6 +75,7 @@ jobs:
           dist
     - name: Commit Version File
       run: |    # this will push the change back up to git
+        if: ${{ steps.ident.outputs.IS_RELEASE   }}
         git config --global user.email "releasy@email.com"
         git config --global user.name "AutoDeploy Script"
         git add releasy/version.py
