@@ -11,8 +11,8 @@ setuptools.setup(
     description="Help with versioning and release to pypi of projects",
     packages=setuptools.find_packages(),
     entry_points={
-        'console_scripts':['rel-easy=releasy.cli:main',
-                           'releasy=releasy.cli:main'],
+        'console_scripts':['rel-easy=rel_easy.cli:main',
+                           'releasy=rel_easy.cli:main'],
     },
     package_data={
         # If any package contains *.txt files, include them:
