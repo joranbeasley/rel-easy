@@ -1,16 +1,18 @@
 ##### Created By releasy ##########################
 import setuptools
-from releasy.version import __version__
+from rel_easy.version import __version__
+from rel_easy.SetupCommands import ReleaseCommand
 setuptools.setup(
-    name="releasy",
+    name="rel-easy",
     version=__version__,
     author="Joran Beasley",
     author_email="joranbeasley@gmail.com",
-    url="{url}",
+    url="https://github.com/joranbeasley/rel-easy",
     description="Help with versioning and release to pypi of projects",
     packages=setuptools.find_packages(),
     entry_points={
-        'console_scripts':['rel-easy=releasy.cli:main','releasy=releasy.cli:main'],
+        'console_scripts':['rel-easy=releasy.cli:main',
+                           'releasy=releasy.cli:main'],
     },
     package_data={
         # If any package contains *.txt files, include them:
@@ -24,7 +26,9 @@ setuptools.setup(
        "License :: OSI Approved :: MIT License",
        "Operating System :: OS Independent",
     ],
-
+    cmdclass={
+        'release': ReleaseCommand,
+    },
     # uncomment for python version requirements
     python_requires='>=2.7',
 )

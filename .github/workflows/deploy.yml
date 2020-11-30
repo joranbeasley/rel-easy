@@ -38,9 +38,10 @@ jobs:
         if ! [[ "${{ github.event.inputs.version }}" == "" ]]; then
           TAG=${{ github.event.inputs.version }}
         fi
-        echo Tag Version: $TAG
-        python -c "import releasy,os;print(os.listdir(os.path.dirname(releasy.__file__)))"
-        python -c "import releasy,os;print('D:',os.listdir(os.path.join(os.path.dirname(releasy.__file__),'DATA')))"
+        echo Tag Version Set: $TAG
+        # Set an output variable other jobs can use with the tag name
+        # this is github command format
+        echo "::set-output name=TAG::$TAG"
         # set the version and current hash
         rel-easy setver --version $TAG --sha1
     - name: Build and publish

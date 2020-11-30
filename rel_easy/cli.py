@@ -1,15 +1,27 @@
+import configparser
 import importlib
 import os
 import re
+import sys
+
 import click
 
-from releasy import SemVersion
-from releasy.util import find_package_paths, path_to_package_candidate, create_setup_py, get_or_prompt, \
-    seperate_name_and_email, build_and_clean, push_to_pypi, create_version_file, temp_cwd
+from rel_easy import SemVersion
+from rel_easy.util import find_package_paths, path_to_package_candidate, create_setup_py, get_or_prompt, \
+    seperate_name_and_email, build_and_clean, pypi_upload, create_version_file, temp_cwd, pypirc_parse_config, \
+    pypirc_save_config_dict, pip_add_extra_index_url_to_conf, pip_get_conf_servers, pip_get_conf_path, \
+    pip_delete_index_url_from_conf
 
 
-def click_promptChoice(*choices,default=None,prompt="Select One"):
+def click_promptChoice(*choices,**kwds):
+    print("K:",kwds)
+    default = kwds.pop('default',None),
+    if isinstance(default,(list,tuple)) and len(default)==1:
+        default = default[0]
+    print("D:",default)
+    prompt = kwds.pop('prompt',"Select One")
     prompt = "  "+ "\n  ".join("%d. %s"%(i,c) for i,c in enumerate(choices,1))  +"\n%s"%prompt
+    # print("D:",default)
     result = click.prompt(prompt,type=int,default=default,show_default=default is not None)
     if result > len(choices):
         click.echo("ERROR: Invalid Choice %s. please select a number corresponding to your choice"%result)
@@ -76,7 +88,7 @@ def rev(major,minor,build,extra,**kwds):
 @require_init
 def bumpver(**kwds):
     package,package_dir = kwds['package_dir']['package'], kwds['package_dir']['package_dir']
-
+    pkg = _import_version(package,package_dir)
     otherVer = SemVersion.from_string(pkg.__version__)
     if kwds['which'] == "major":
         otherVer.set(otherVer.major+1,0,0)
@@ -129,23 +141,23 @@ def set_ver(major,minor,build,extra,sha1=False,**kwds):
 @click.option("-p","--password",type=str,default=None)
 @click.option("-t","--token",type=str,default=None)
 @click.option("-r","--repository",type=str,default="pypi")
-@click.option("-v","--versionstring",type=None)
+@click.option("-v","--version",default=None,type=SemVersion.from_string)
 @click.option("--sha1",is_flag=True,default=False)
 @click.option("-b","--build-only",is_flag=True,default=False)
-def deploy_pypi(package_dir,versionstring=None,sha1=False,build_only=False,**kwds):
-    if versionstring:
+def deploy_pypi(package_dir,version=None,sha1=False,build_only=False,**kwds):
+    if version:
         if sha1:
             git_hash= os.popen("git log --pretty=%H -1").read().strip()
         else:
             git_hash=""
-        create_version_file(package_dir['package'], package_dir['package_dir'], str(versionstring), sha_hash=git_hash)
+        create_version_file(package_dir['package'], package_dir['package_dir'], str(version), sha_hash=git_hash)
     new_files = build_and_clean(package_dir)
     click.echo("\n".join("Built: %s"%f for f in new_files))
     if not build_only:
         if not new_files:
             print("ERROR: No New Build, did you forget to update the version? or clear out old trial builds?")
             return []
-        new_files = push_to_pypi(new_files,**kwds)
+        new_files = pypi_upload(new_files, **kwds)
         click.echo("\n".join("Built And Published: %s" % os.path.basename(f) for f in new_files))
 
 
@@ -231,6 +243,104 @@ def _initialize_setup_py_kwds(kwds):
             data['pkg_email'] = click.prompt("--email", default=data['pkg_email'])
     return data
 
+@cli.group("pip",invoke_without_command=True)
+@click.pass_context
+def cli2(ctx):
+    # print("G2",ctx)
+    if not ctx.invoked_subcommand:
+        print("SHOW MENU")
+@cli2.command("add-server")#"config-install-servers",help="add an install server for pip to pull from")
+@click.argument("url",type=str)
+@click.option("-y","--yes",is_flag=True)
+def add_install_server(url,yes=False):
+    print("ADD:",url)
+    if not yes:
+        if not click.confirm("Are you sure you want to add: %s"%url):
+            print("OK not adding server")
+            exit(0)
+    pip_add_extra_index_url_to_conf(url)
 
+@cli2.command("del-server")#"config-install-servers",help="add an install server for pip to pull from")
+@click.argument("url",required=False,type=str,default=None)
+@click.option("-y","--yes",is_flag=True,default=False)
+def del_install_server(url=None,yes=False):
+    print("DEL:",url)
+    if not url:
+        servers = pip_get_conf_servers()
+        urls = pip_get_conf_servers('extra-index-url', 'index-url')
+        urls = list(filter(None,urls.get('extra-index-url',[])+urls.get('index-url',[])))
+        if not urls:
+            print("There are no custom urls to delete ... try adding some")
+        result = click_promptChoice("Cancel Do Not Delete", *urls)[1]
+        if result == "Cancel Do Not Delete":
+            print("OK not deleting ANY server")
+            exit(0)
+        url = result
+        data = pip_delete_index_url_from_conf(url)
+    print("Delete Server:",url)
+
+
+
+@cli2.command("list-servers")#"config-install-servers",help="add an install server for pip to pull from")
+# @click.argument("url",type=str)
+def list_install_server():
+    from pip._internal.models.index import PyPI
+    urls = pip_get_conf_servers('extra-index-url','index-url')
+    print("U:",urls)
+    urls['index-url'] = ["[LOCKED] "+PyPI.simple_url] if len(urls.get('index-url',[])) < 2 else urls['index-url'][1:]
+    urls['extra-index-url'] = ["<No Extra URLS>"] if len(urls['extra-index-url']) < 2 else urls['extra-index-url'][1:]
+    click.echo("conf: %s"%(pip_get_conf_path(),))
+    click.echo("index-url:\n - "+"\n - ".join(urls['index-url']))
+    click.echo("extra-index-url:\n - "+"\n - ".join(urls['extra-index-url']))
+
+@cli.command("config-deploy-servers",help="setup and configure your deploy keys and servers for pypi")
+def configure_pypirc():
+    pip_add_extra_index_url_to_conf("adsa")
+    while True:
+        data = pypirc_parse_config()
+        servers = data.get('distutils',{'index-servers':['']})['index-servers'][1:]
+        servers_options = servers[:]
+        servers_options.insert(0,"Delete a Server")
+        servers_options.insert(0,"Add a new Server")
+        servers_options.append("Quit")
+        result = click_promptChoice(*servers_options,default=1)[1]
+        alias = None
+        editing = None
+        print("R:",result)
+        if result == "QUIT":
+            sys.exit(0)
+        if result in servers:
+            print("EDIT EXISTING!!")
+            alias = result
+            editing = alias
+            result = "Add a new Server"
+        if result == "Delete a Server":
+            server = click_promptChoice(*["Cancel Deletion",]+servers,default=1)
+            print("DELETE SERVER:",server)
+        elif result == "Add a new Server":
+            if alias is None:
+                alias = click.prompt("enter alias name for server")
+            d = {}
+            if editing:
+                d = {'r':{'default': data[editing].get('repository','')},
+                     'u':{'default': data[editing].get('username','')},
+                     'p':{'default': data[editing].get('password','')},
+                     }
+            print(":D:",d)
+            alias_data = dict(
+                repository = click.prompt("enter repository url for server",**d['r']),
+                username= click.prompt("repository username",**d['u']),
+                password= click.prompt("repository password",**d['p'])
+            )
+            if not editing:
+                data['distutils']['index-servers'].append(alias)
+            data.setdefault(alias,{}).update({k:v for k,v in alias_data.items() if v})
+            if click.confirm("Are you sure you wish to add this repository?"):
+                pypirc_save_config_dict(data)
+                if not editing and alias not in ['pypi','testpypy']:
+                    if click.confirm("Would you like to add a corresponding extra-index-url for pip?"):
+                        joiner = "://%s:%s@"%(alias_data['username'],alias_data['token'])
+                        uri = joiner.join(alias_data['repository'].split("://"))
+                        pip_add_extra_index_url_to_conf(uri)
 
 cli()
