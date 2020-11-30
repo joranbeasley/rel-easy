@@ -66,13 +66,14 @@ jobs:
         # TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        SERVER: ${{ secrets.PYPY_SERVER }}
       run: |
         VER=${{ steps.ident.outputs.VERSION }}
         if [[ "$TWINE_USERNAME" == "" ]]; then
           echo "::error :: unable to deploy without setting PYPI_USERNAME and PYPI_PASSWORD in the project settings"
           exit 1
         fi
-        SERVER=${${{ secrets.PYPY_SERVER }}:-pypi}
+        SERVER=${SERVER:=pypi}
         echo "TRIGGERED FROM RELEASE PUBLISH TO PYPI"
         echo rel-easy publish -r $SERVER
 
