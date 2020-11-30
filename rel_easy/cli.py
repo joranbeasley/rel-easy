@@ -10,7 +10,7 @@ from rel_easy import SemVersion
 from rel_easy.util import find_package_paths, path_to_package_candidate, create_setup_py, get_or_prompt, \
     seperate_name_and_email, build_and_clean, pypi_upload, create_version_file, temp_cwd, pypirc_parse_config, \
     pypirc_save_config_dict, pip_add_extra_index_url_to_conf, pip_get_conf_servers, pip_get_conf_path, \
-    pip_delete_index_url_from_conf
+    pip_delete_index_url_from_conf, pypirc_remove_section
 
 
 def click_promptChoice(*choices,**kwds):
@@ -370,13 +370,13 @@ def wizzard():
                 alias = click.prompt("enter alias name for server")
             else:
                 alias = alias2['name']
+                click.echo("EDITING: %s"%alias)
             d = {'r':{},'u':{},'p':{}}
             if editing:
                 d = {'r':{'default': alias2['data'].get('repository','')},
                      'u':{'default': alias2['data'].get('username','')},
                      'p':{'default': alias2['data'].get('password','')},
                      }
-            print(":D:",d)
             repository = None
             if alias not in {'pypi','testpypi'}:
                 repository = click.prompt("enter repository url for server", **d['r'])
@@ -395,12 +395,37 @@ def wizzard():
             if click.confirm(msg):
                 pypirc_save_config_dict(data)
                 if not editing and alias not in ['pypi','testpypy']:
-                    if click.confirm("Would you like to add a corresponding extra-index-url for pip?"):
+                    if click.confirm("Would you like to add a corresponding extra-index-url for pip install?"):
                         joiner = "://%s:%s@"%(alias_data['username'],alias_data['token'])
                         uri = joiner.join(alias_data['repository'].split("://"))
                         pip_add_extra_index_url_to_conf(uri)
         elif result[0] == "d":
             print("DELETE")
+            click.echo("Servers To Push Python Packages To")
+            click.echo("  SELECT ITEM TO DELETE (or 'x' to exit)")
+            click.echo("  alias               | url")
+            click.echo("  --------------------+----------------------")
+            choices = ['x']
+            for i, server in enumerate(servers, 1):
+                d = data.get(server, {})
+                url = d.get('repository', "*INTERNAL  !CANNOT DELETE!*")
+                if len(url) > 49:
+                    url = "...".join([url[:18], url[-30:]])
+                if d.get("username"):
+                    url = "//******@".join(url.split("//", 1))
+                choices.append(str(i))
+                aliases[str(i)] = server
+                click.echo("  {0: 2d}. {1:<16s}| {2}".format(i, server, url))
+            result = click.prompt("Choose an item to DELETE", show_choices=False,
+                                  type=click.Choice(choices, case_sensitive=False))
+            alias = aliases[result]
+
+            if alias in {"pypi","testpypi"}:
+                click.echo("You CANNOT DELETE %s"%alias)
+                exit(0)
+            if click.confirm("Are you sure you wish to delete %s "%alias):
+                pypirc_remove_section(None,alias)
+                print("Removed:",alias)
         elif result[0] == "x":
             click.echo("GoodBye")
             exit(0)
