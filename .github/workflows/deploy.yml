@@ -27,24 +27,31 @@ jobs:
       with:
         python-version: '3.x'
     - name: Install dependencies
+      id: ident
       run: |
-        echo Tag Version: ${GITHUB_REF##*/}
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
-        pip install . -v
+        pip install . -v # install our package
+        if [[ "${{ github.event.inputs.version }}" == "" ]]; then
+          echo "DEPLOY VIA RELEASES!"
+          echo "::set-output name=VERSION:${GITHUB_REF##*/}"
+          echo "::set-output name=IS_RELEASE:true"
+        else
+          echo "DEPLOY VIA TEST BUTTON
+          echo "::set-output name=VERSION:${GITHUB_REF##*/}"
+          echo "::set-output name=IS_TEST:true"
+        fi
     - name: Update Version
       run: |
-        TAG=${GITHUB_REF##*/}
-        if ! [[ "${{ github.event.inputs.version }}" == "" ]]; then
-          TAG=${{ github.event.inputs.version }}
-        fi
-        echo Tag Version Set: $TAG
-        # Set an output variable other jobs can use with the tag name
-        # this is github command format
-        echo "::set-output name=TAG::$TAG"
-        # set the version and current hash
+        TAG=${{ steps.ident.outputs.VERSION }}
         rel-easy setver --version $TAG --sha1
+
+    - name: FAKE Build and publish
+      if: ${{ steps.ident.outputs.IS_TEST   }}
+      run: |
+        echo "SKIP DEPLOY STEP SINCE WE ARE JUST FAKING IT"
     - name: Build and publish
+      if: ${{ steps.ident.outputs.IS_RELEASE   }}
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -53,7 +60,7 @@ jobs:
         if ! [[ "${{ github.event.inputs.version }}" == "" ]]; then
           echo "TRIGGERED FROM BUTTON, only build tar, do not deploy"
           rel-easy publish --build-only
-        #  rm -rf dist
+
         else
           echo "TRIGGERED FROM RELEASE PUBLISH TO PYPI"
           rel-easy publish
