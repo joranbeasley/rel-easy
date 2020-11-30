@@ -16,7 +16,7 @@ setuptools.setup(
     },
     package_data={
         # If any package contains *.txt files, include them:
-        "releasy": ["DATA/*.tmpl"]}
+        "rel_easy": ["DATA/*.tmpl"]}
     ,
     # uncomment for auto install requirements
     install_requires=['click','six'],
