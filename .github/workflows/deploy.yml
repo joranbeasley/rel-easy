@@ -74,7 +74,7 @@ jobs:
           exit 1
         fi
         SERVER=${SERVER:=pypi}
-        echo "TRIGGERED FROM RELEASE PUBLISH TO PYPI"
+        echo "TRIGGERED FROM RELEASE PUBLISH TO $SERVER"
         echo rel-easy publish -r $SERVER
 
         echo "::warning file=rel-easy-$VER:: Published ${{ steps.ident.outputs.VERSION }} to $SERVER"
