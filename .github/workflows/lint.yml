@@ -38,5 +38,5 @@ jobs:
         flake8 rel_easy --max-line-length=100 --tee --output-file .lint.ALL.new.txt --count
 
     - name: McCabe Complexity
-        run: |
-          flake8 rel_easy --max-complexity=6 --max-line-length=100 --select=C901 --tee --output-file .mccabe.ALL.new.txt --count
+      run: |
+        flake8 rel_easy --max-complexity=6 --max-line-length=100 --select=C901 --tee --output-file .mccabe.ALL.new.txt --count
