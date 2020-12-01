@@ -11,7 +11,7 @@ from rel_easy.consts import VER_NAMES, ERR_NO_NEW_FILES
 from rel_easy.releasy_pkg_data import PypiRc
 from rel_easy.util import find_package_paths, path_to_package_candidate, create_setup_py, \
     get_or_prompt, separate_name_and_email, build_and_clean, pypi_upload, create_version_file, \
-    temp_cwd, pypirc_parse_config,  pip_add_extra_index_url_to_conf, \
+    temp_cwd, pypirc_parse_config, pip_add_extra_index_url_to_conf, \
     pip_get_conf_servers, pip_get_conf_path, pip_delete_index_url_from_conf, \
     pypirc_add_section_to_config
 
@@ -146,13 +146,9 @@ def set_ver(major, minor, build, extra, sha1=False, **kwds):
     if not os.path.exists(os.path.join(package['package_dir'], package['package'], "version.py")):
         executable = click.get_current_context().command_path.split(" ", 1)[0]
         raise RuntimeError("You MUST run `%s init` first" % executable)
-    ver = None
-    if kwds.get('version'):
-        try:
-            ver = SemVersion.from_string(kwds.get('version'))
-        except TypeError:
-            pass
-    if not ver:
+    try:
+        ver = SemVersion.from_string(kwds.get('version'))
+    except TypeError:
         major, minor, build, extra = _get_version_overrides(major, minor, build, extra, **kwds)
         ver = SemVersion(major, minor, build, extra)
     if sha1:
@@ -459,14 +455,24 @@ def add_pypirc_alias(alias, **kwds):
     print_pypirc_servers()
 
 
+def print_server_line(server, data, i):
+    sz = 20
+    ct_fmt = ""
+    if i:
+        sz = 17
+        ct_fmt = "{0: 2d}."
+    d = data.get(server, {})
+    url = d.get('repository', "*INTERNAL  CREDS ONLY*")
+    if len(url) > 49:
+        url = "...".join([url[:18], url[-30:]])
+    if d.get("username"):
+        url = "//******@".join(url.split("//", 1))
+    click.echo("  {ct_fmt}{0:<{1}s}| {2}".format(server, sz, url, ct_fmt=ct_fmt.format(i)))
+
+
 def print_pypirc_servers(prompt="", show_counts=False):
     data = pypirc_parse_config()
     servers = data.get('distutils', {'index-servers': ['']})['index-servers'][1:]
-    sz = 20
-    ct_fmt = ""
-    if show_counts:
-        sz = 17
-        ct_fmt = "{0: 2d}."
 
     if len(servers):
         click.echo("Servers To Push Python Packages To")
@@ -475,13 +481,7 @@ def print_pypirc_servers(prompt="", show_counts=False):
         click.echo("  alias          | url")
         click.echo("  ---------------+----------------------")
         for i, server in enumerate(servers):
-            d = data.get(server, {})
-            url = d.get('repository', "*INTERNAL  CREDS ONLY*")
-            if len(url) > 49:
-                url = "...".join([url[:18], url[-30:]])
-            if d.get("username"):
-                url = "//******@".join(url.split("//", 1))
-            click.echo("  {ct_fmt}{0:<{1}s}| {2}".format(server, sz, url, ct_fmt=ct_fmt.format(i)))
+            print_server_line(server, data, i if show_counts else None)
     else:
         click.echo("No Servers found ... ")
     return servers
