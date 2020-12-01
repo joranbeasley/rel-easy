@@ -211,7 +211,7 @@ def init(major, minor, build, extra, **kwds):
     if not os.path.exists(setup_path):
         r = click.prompt("Create setup.py?", default="y",
                          type=click.Choice("yn", case_sensitive=False))
-        if r.lower() == "y":
+        if r[0].lower() in {"y","Y"}:
             d = {}
             d.update(**kwds)
             d.update(**package)
