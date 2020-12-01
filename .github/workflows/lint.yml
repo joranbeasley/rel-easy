@@ -27,11 +27,16 @@ jobs:
     - name: Lint Critical Errors
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 --select=E9,F63,F7,F82 --disable-noqa
+        flake8 rel_easy --select=E9,F63,F7,F82 --disable-noqa
+
     - name: Lint Commit DIFF Only
       run: |
         git diff -U @~..@ | flake8 --diff --tee .lint.DIFF.new.txt
+
     - name: Lint ALL
       run: |
-        flake8 rel_easy --tee --output-file .lint.ALL.new.txt
+        flake8 rel_easy --max-line-length=100 --tee --output-file .lint.ALL.new.txt --count
 
+    - name: McCabe Complexity
+        run: |
+          flake8 rel_easy --max-complexity=6 --max-line-length=100 --select=C901 --tee --output-file .mccabe.ALL.new.txt --count

@@ -2,16 +2,18 @@ import importlib
 import os
 import re
 import sys
+from functools import wraps
 
 import click
 
 from rel_easy import SemVersion
-from rel_easy.consts import PROMPT_EXTRA_INDEX, VER_NAMES, ERR_NO_NEW_FILES
+from rel_easy.consts import VER_NAMES, ERR_NO_NEW_FILES
+from rel_easy.releasy_pkg_data import PypiRc
 from rel_easy.util import find_package_paths, path_to_package_candidate, create_setup_py, \
     get_or_prompt, separate_name_and_email, build_and_clean, pypi_upload, create_version_file, \
-    temp_cwd, pypirc_parse_config, pypirc_save_config_dict, pip_add_extra_index_url_to_conf, \
+    temp_cwd, pypirc_parse_config,  pip_add_extra_index_url_to_conf, \
     pip_get_conf_servers, pip_get_conf_path, pip_delete_index_url_from_conf, \
-    pypirc_remove_section, pypirc_add_section_to_config
+    pypirc_add_section_to_config
 
 
 def click_promptChoice(*choices, **kwds):
@@ -61,6 +63,7 @@ def cli(ctx, version=False):
 
 
 def require_init(fn):
+    @wraps(fn)
     def __inner(*args, **kwargs):
         package = kwargs['package_dir']
         pkg_name, pkg_dir = package['package_dir'], package['package']
@@ -205,17 +208,9 @@ def deploy_pypi(package_dir, version=None, sha1=False, build_only=False, **kwds)
 @click.option("--gh-action", "--add-github-deploy-action", prompt=True,
               type=click.Choice("yN", case_sensitive=False), default=None)
 def init(major, minor, build, extra, **kwds):
-    package, package_dir = kwds['package_dir']['package'], kwds['package_dir']['package_dir']
-    try:
-        ver = SemVersion.from_string(kwds.get('version'))
-    except TypeError:  # not the right type or not passed in
-        major, minor, build, extra = _get_version_overrides(major, minor, build, extra, **kwds)
-        ver = SemVersion(major, minor, build, extra)
-    sha_hash = ""
-    if kwds.get("sha1"):
-        sha_hash = os.popen("git log --pretty=%H -1").read()
-
-    create_version_file(package, package_dir, str(ver), sha_hash=sha_hash)
+    do_create_version_file_and_get_version(major, minor, build, extra, **kwds)
+    package = kwds['package_dir']
+    package, package_dir = package['package'], package['package_dir']
     setup_path = os.path.join(package_dir, "setup.py")
     if not os.path.exists(setup_path):
         r = click.prompt("Create setup.py?", default="y",
@@ -251,6 +246,21 @@ def init(major, minor, build, extra, **kwds):
             f.write(github_action_def)
         os.system("git add {package_dir}/.github/workflows/deploy.yml".format(**package))
         print("installed .github/workflows/deploy.yml")
+
+
+def do_create_version_file_and_get_version(major, minor, build, extra, **kwds):
+    package, package_dir = kwds['package_dir']['package'], kwds['package_dir']['package_dir']
+    try:
+        ver = SemVersion.from_string(kwds.get('version'))
+    except TypeError:  # not the right type or not passed in
+        major, minor, build, extra = _get_version_overrides(major, minor, build, extra, **kwds)
+        ver = SemVersion(major, minor, build, extra)
+    sha_hash = ""
+    if kwds.get("sha1"):
+        sha_hash = os.popen("git log --pretty=%H -1").read()
+
+    create_version_file(package, package_dir, str(ver), sha_hash=sha_hash)
+    return ver
 
 
 def _import_version(package, package_dir):
@@ -374,73 +384,63 @@ def cli3(ctx):
         pypi_wizard()
 
 
-def pypi_wizard():
-    data = pypirc_parse_config()
-    servers = print_servers("  [ N. NEW ]  [ D. DEL ]  [ X. EXIT ]")
-    choices = ['n', 'd', 'x']
+def pypy_get_alias_choice_prompt(prompt1, prompt2):
+    servers = print_pypirc_servers(prompt1, show_counts=True)
+    choices = ['x']
     choices.extend(map(str, range(1, len(servers) + 1)))
+    result = click.prompt(prompt2, show_choices=False,
+                          type=click.Choice(choices, case_sensitive=False))
+    return servers[int(result) - 1]
+
+
+def pypi_wizard_root_prompt():
+    servers = print_pypirc_servers("  [ N. NEW ]  [ D. DEL ]  [ X. EXIT ]")
+    choices = ['n', 'd', 'x']
+    choices.extend(map("{0}".format, range(1, len(servers) + 1)))
     result = click.prompt("Choose an item to Edit or N,D,X", show_choices=False,
                           type=click.Choice(choices, case_sensitive=False))
-    editing = False
-    alias2 = None
+    action = {"action": "quit"}
+    if result == "x":
+        return
     if result.isdigit():
-        alias2 = {
-            'name': servers[int(result) - 1],
-        }
-        editing = alias2['name'] is not None
-        alias2['data'] = data.get(alias2['name'], {})
-        result = "n"
-    if result[0] == "n":
-        if alias2 is None:
-            alias = click.prompt("enter alias name for server")
-        else:
-            alias = alias2['name']
-            click.echo("EDITING: %s" % alias)
-        d = {'r': {}, 'u': {}, 'p': {}}
-        if editing:
-            d = {'r': {'default': alias2['data'].get('repository', '')},
-                 'u': {'default': alias2['data'].get('username', '')},
-                 'p': {'default': alias2['data'].get('password', '')},
-                 }
-        repository = None
-        if alias not in {'pypi', 'testpypi'}:
-            repository = click.prompt("enter repository url for server", **d['r'])
-        alias_data = dict(
-            username=click.prompt("repository username", **d['u']),
-            password=click.prompt("repository password", **d['p'])
-        )
-        if repository:
-            alias_data['repository'] = repository
-        if not editing:
-            data['distutils']['index-servers'].append(alias)
-        data.setdefault(alias, {}).update({k: v for k, v in alias_data.items() if v})
-        msg = "Are you sure you wish to add this repository?"
-        if editing:
-            msg = msg[:25] + "finalize editing of server:%s ?" % (alias)
-        if click.confirm(msg):
-            pypirc_save_config_dict(data)
-            if not editing and alias not in ['pypi', 'testpypi']:
-                if click.confirm(PROMPT_EXTRA_INDEX):
-                    joiner = "://%s:%s@" % (alias_data['username'], alias_data['token'])
-                    uri = joiner.join(alias_data['repository'].split("://"))
-                    pip_add_extra_index_url_to_conf(uri)
-    elif result[0] == "d":
-        servers = print_servers("SELECT ITEM TO DELETE (or 'x' to exit)", show_counts=True)
-        choices = ['x']
-        choices.extend(map(str, range(1, len(servers) + 1)))
-        result = click.prompt("Choose an item to DELETE", show_choices=False,
-                              type=click.Choice(choices, case_sensitive=False))
-        alias = servers[int(result) - 1]
+        action = {"action": "edit", "target": servers[int(result) - 1]}
+    elif result == "n":
+        action = {"action": "create"}
+    elif result == "d":
+        result = pypy_get_alias_choice_prompt("SELECT ITEM TO DELETE (or 'x' to exit)",
+                                              "Choose an item to DELETE")
+        action = {"action": "delete", "target": result}
+    return action
 
-        if alias in {"pypi", "testpypi"}:
-            click.echo("You CANNOT DELETE %s" % alias)
-            exit(0)
-        if click.confirm("Are you sure you wish to delete %s " % alias):
-            pypirc_remove_section(None, alias)
-            print("Removed:", alias)
-    elif result[0] == "x":
+
+def pypi_edit_or_create_prompt(alias=None, repository=None, username=None, password=None):
+    KNOWN_ALIASES = {"pypi", "testpypi"}
+    if alias:
+        message = "EDIT PYPI DEPLOY TARGET: %s" % alias
+    else:
+        message = "Create New PYPI DEPLOY TARGET"
+    click.echo(message)
+    if alias not in KNOWN_ALIASES:
+        repository = click.prompt("%s REPOSITORY URL:" % alias, default=repository)
+    username = click.prompt("%s USERNAME:" % alias, default=repository)
+    password = click.prompt("%s PASSWORD:" % alias, default=repository)
+    return {'alias': alias, 'repository': repository, 'username': username, 'password': password}
+
+
+def pypi_wizard():
+    result = pypi_wizard_root_prompt()
+    pypi_inst = PypiRc()
+    if result['action'] == "quit":
         click.echo("GoodBye")
-        exit(0)
+    elif result['action'] == "delete":
+        click.echo("DELETE: %s" % (result['target']))
+        pypi_inst.remove_alias(result['target'])
+        pypi_inst.save()
+    elif result['action'] in {"create", "edit"}:
+        kwargs = dict(pypi_inst.get(result.get('target', "<NA>"), {}).items())
+        result = pypi_edit_or_create_prompt(result.get('target', None), **kwargs)
+        pypi_inst.set_alias(**result)
+        pypi_inst.save()
 
 
 @cli3.command("del-server", help="setup and configure your deploy credentials and servers for pypi")
@@ -456,10 +456,10 @@ def delete_pypirc_alias(alias):
 @click.option("-p", "--password", prompt=True)
 def add_pypirc_alias(alias, **kwds):
     pypirc_add_section_to_config(**kwds)
-    print_servers()
+    print_pypirc_servers()
 
 
-def print_servers(prompt="", show_counts=False):
+def print_pypirc_servers(prompt="", show_counts=False):
     data = pypirc_parse_config()
     servers = data.get('distutils', {'index-servers': ['']})['index-servers'][1:]
     sz = 20
@@ -489,58 +489,8 @@ def print_servers(prompt="", show_counts=False):
 
 @cli3.command("list-servers", help="list pypi servers configured for uploading")
 def list_pypirc_aliases():
-    print_servers()
+    print_pypirc_servers()
 
 
-def configure_pypirc():
-    pip_add_extra_index_url_to_conf("adsa")
-    while True:
-        data = pypirc_parse_config()
-        servers = data.get('distutils', {'index-servers': ['']})['index-servers'][1:]
-        servers_options = servers[:]
-        servers_options.insert(0, "Delete a Server")
-        servers_options.insert(0, "Add a new Server")
-        servers_options.append("Quit")
-        result = click_promptChoice(*servers_options, default=1)[1]
-        alias = None
-        editing = None
-        print("R:", result)
-        if result == "QUIT":
-            sys.exit(0)
-        if result in servers:
-            print("EDIT EXISTING!!")
-            alias = result
-            editing = alias
-            result = "Add a new Server"
-        if result == "Delete a Server":
-            server = click_promptChoice(*["Cancel Deletion", ] + servers, default=1)
-            print("DELETE SERVER:", server)
-        elif result == "Add a new Server":
-            if alias is None:
-                alias = click.prompt("enter alias name for server")
-            d = {}
-            if editing:
-                d = {'r': {'default': data[editing].get('repository', '')},
-                     'u': {'default': data[editing].get('username', '')},
-                     'p': {'default': data[editing].get('password', '')},
-                     }
-            print(":D:", d)
-            alias_data = dict(
-                repository=click.prompt("enter repository url for server", **d['r']),
-                username=click.prompt("repository username", **d['u']),
-                password=click.prompt("repository password", **d['p'])
-            )
-            if not editing:
-                data['distutils']['index-servers'].append(alias)
-            data.setdefault(alias, {}).update({k: v for k, v in alias_data.items() if v})
-            if click.confirm("Are you sure you wish to add this repository?"):
-                pypirc_save_config_dict(data)
-                if not editing and alias not in ['pypi', 'testpypi']:
-
-                    if click.confirm(PROMPT_EXTRA_INDEX):
-                        joiner = "://%s:%s@" % (alias_data['username'], alias_data['token'])
-                        uri = joiner.join(alias_data['repository'].split("://"))
-                        pip_add_extra_index_url_to_conf(uri)
-
-
-cli()
+if __name__ == "__main__":
+    cli()

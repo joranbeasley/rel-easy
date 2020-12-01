@@ -6,12 +6,32 @@ import shutil
 import subprocess
 import sys
 from contextlib import contextmanager
-
-# hacky backport that works in all python
-isidentifier = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$").match
+from logging.handlers import RotatingFileHandler
 
 # precompile regex
 AUTHOR_RE_PATTERN = re.compile(r"([^ ]+)\s+([^ ]+)?\s*<?\s*([^\s]+@[^\s]+\.[^\s]+)\s*>\s*")
+
+
+def get_log(name, fpath=None, format="%(level)s:%(asctime)s: %(message)s",
+            stdout=False, **filehandlerkwargs):
+    import logging
+    log = logging.getLogger(name)
+    if len(log.handlers):
+        return log
+    if not fpath:
+        stdout = True
+    else:
+        filehandlerkwargs.setdefault('maxBytes', 20000000)
+        filehandlerkwargs.setdefault('backupCount', 2)
+        formatter = logging.Formatter(format)
+        handler = RotatingFileHandler(fpath, **filehandlerkwargs)
+        handler.setFormatter(formatter)
+        log.addHandler(handler)
+    if stdout:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(level)s:%(name)s: %(message)s"))
+        log.addHandler(handler)
+    return log
 
 
 def path_to_package_candidate(path):
@@ -29,35 +49,37 @@ def find_package_paths(cwd, ignore_patterns=("venv",)):
     :param cwd:
     :return:
     """
-    dir_frontier = [os.path.abspath(cwd)]
+    from rel_easy.releasy_pkg_data import OSFindPackages
+    for pkg in OSFindPackages(cwd, ignore_patterns).find_all("__init__.py"):
+        yield pkg.pkg_path
+    # dir_frontier = [os.path.abspath(cwd)]
+    # seen = set()
+    # while dir_frontier:
+    #     curdir = dir_frontier.pop(0)
+    #     # print("SEARCH:", curdir)
+    #     if curdir in seen:
+    #         continue
+    #     seen.add(curdir)
+    #     pname = os.path.basename(curdir)
+    #     # pdir = os.path.dirname(curdir)
+    #
+    #     files = os.listdir(curdir)
+    #     # print(" CheckFILES:",files)
+    #     for fname in files:
+    #         if fname.startswith("."):
+    #             continue
+    #         if fname == "__init__.py":
+    #             if isidentifier(pname):
+    #                 yield curdir
+    #         else:
+    #             fpath = os.path.join(curdir, fname)
+    #             if fname[0] not in "_." and os.path.isdir(fpath):
+    #                 if not any(pat in fname for pat in ignore_patterns):
+    #                     # print("APPEND:",fname)
+    #                     if fpath not in seen:
+    #                         dir_frontier.append(fpath)
 
-    seen = set()
-    while dir_frontier:
-        curdir = dir_frontier.pop(0)
-        # print("SEARCH:", curdir)
-        if curdir in seen:
-            continue
-        seen.add(curdir)
-        pname = os.path.basename(curdir)
-        # pdir = os.path.dirname(curdir)
-
-        files = os.listdir(curdir)
-        # print(" CheckFILES:",files)
-        for fname in files:
-            if fname.startswith("."):
-                continue
-            if fname == "__init__.py":
-                if isidentifier(pname):
-                    yield curdir
-            else:
-                fpath = os.path.join(curdir, fname)
-                if fname[0] not in "_." and os.path.isdir(fpath):
-                    if not any(pat in fname for pat in ignore_patterns):
-                        # print("APPEND:",fname)
-                        if fpath not in seen:
-                            dir_frontier.append(fpath)
-
-        # print("C:",pname,isidentifier(pname),"F:",files)
+    # print("C:",pname,isidentifier(pname),"F:",files)
 
 
 def build_and_publish(package_dir, repository="pypi", username=None, password=None, token=None):
