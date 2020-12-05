@@ -186,22 +186,23 @@ def deploy_pypi(package_dir, version=None, sha1=False, build_only=False, **kwds)
         new_file_basenames = map(os.path.basename, new_files)
         click.echo("\n".join(map("Built And Published: {0}".format, new_file_basenames)))
 
+
 @cli.command("start")
-@click.option("-p","--package-name",prompt=True,type=str)
-@click.option("-v","--version",prompt=True,default="0.0.1",type=str)
-@click.option("-d","--description",prompt=True,default="a short description",type=str)
-@click.option("-a","--author",prompt=True,default="Releasy Autobot",type=str)
-@click.option("-e","--email",prompt=True,default="releasy@works.com",type=str)
-@click.option("-u","--url",prompt=True,default="https://github.com",type=str)
-def create_project(package_name,version,description,author,email,url):
+@click.option("-p", "--package-name", prompt=True, type=str)
+@click.option("-v", "--version", prompt=True, default="0.0.1", type=str)
+@click.option("-d", "--description", prompt=True, default="a short description", type=str)
+@click.option("-a", "--author", prompt=True, default="Releasy Autobot", type=str)
+@click.option("-e", "--email", prompt=True, default="releasy@works.com", type=str)
+@click.option("-u", "--url", prompt=True, default="https://github.com", type=str)
+def create_project(package_name, version, description, author, email, url):
     pkg_dir = package_name.replace("-", "_")
     os.makedirs(pkg_dir)
-    with open("%s/__init__.py"%pkg_dir,"w") as f:
+    with open("%s/__init__.py" % pkg_dir, "w") as f:
         f.write("from .version import __version__")
-    do_create_version_file_and_get_version(0, 0, 0, '', version=version,package_dir={'package_dir':'.','package':pkg_dir})
-    create_setup_py('./setup.py',pkg_name=package_name,pkg_desc=description,pkg_author=author,pkg_email=email,pkg_site=url)
-
-
+    do_create_version_file_and_get_version(0, 0, 0, '', version=version,
+                                           package_dir={'package_dir': '.', 'package': pkg_dir})
+    create_setup_py('./setup.py', pkg_name=package_name, pkg_desc=description, pkg_author=author, pkg_email=email,
+                    pkg_site=url)
 
 
 @cli.command("init")
@@ -229,8 +230,8 @@ def init(major, minor, build, extra, **kwds):
     if not os.path.exists(setup_path):
         r = click.prompt("Create setup.py?", default="y",
                          type=click.Choice("yn", case_sensitive=False))
-        if r[0].lower() in {"y","Y"}:
-            d =    {}
+        if r[0].lower() in {"y", "Y"}:
+            d = {}
             d.update(**kwds)
             d.update(**package)
             create_setup_py(setup_path, **_initialize_setup_py_kwds(d))
