@@ -189,12 +189,13 @@ def deploy_pypi(package_dir, version=None, sha1=False, build_only=False, **kwds)
 
 @cli.command("start")
 @click.option("-p", "--package-name", prompt=True, type=str)
-@click.option("-v", "--version", prompt=True, default="0.0.1", type=str)
+@click.option("-v", "--version", prompt=False, default="0.0.1", type=str)
 @click.option("-d", "--description", prompt=True, default="a short description", type=str)
 @click.option("-a", "--author", prompt=True, default="Releasy Autobot", type=str)
 @click.option("-e", "--email", prompt=True, default="releasy@works.com", type=str)
 @click.option("-u", "--url", prompt=True, default="https://github.com", type=str)
-def create_project(package_name, version, description, author, email, url):
+@click.option("-g","--add-github-release-action",type=bool,default=True,prompt=True)
+def create_project(package_name, version, description, author, email, url,add_github_release_action):
     pkg_dir = package_name.replace("-", "_")
     os.makedirs(pkg_dir)
     with open("%s/__init__.py" % pkg_dir, "w") as f:
@@ -203,7 +204,10 @@ def create_project(package_name, version, description, author, email, url):
                                            package_dir={'package_dir': '.', 'package': pkg_dir})
     create_setup_py('./setup.py', pkg_name=package_name, pkg_desc=description, pkg_author=author,
                     pkg_email=email, pkg_site=url)
-
+    if add_github_release_action:
+        print("ADD GITHUB RELEASE ACTION!")
+        os.system('git init && git add *')
+        install_github_release_action('.', package_name.replace("-","_"))
 
 @cli.command("init")
 @click.argument("major", type=int, default=0, required=False)
@@ -250,17 +254,19 @@ def init(major, minor, build, extra, **kwds):
         else:
             click.echo("setup.py is already configured")
     if kwds.get("gh_action") == "y":
-        click.echo("INSTALLING .github/workflows/deploy.yml")
-        dpath = "{package_dir}/.github/workflows/deploy.yml".format(**package)
-        info = {'PKG': package['package'], 'EXE': 'versioner'}
-        templ_path = os.path.join(os.path.dirname(__file__),
-                                  "DATA", "github-deploy-action-yml.tmpl")
-        github_action_def = open(templ_path).read().format(**info)
-        os.makedirs(os.path.dirname(dpath), exist_ok=True)
-        with open(dpath, "w") as f:
-            f.write(github_action_def)
-        os.system("git add {package_dir}/.github/workflows/deploy.yml".format(**package))
-        print("installed .github/workflows/deploy.yml")
+        install_github_release_action()
+def install_github_release_action(pkgDir,pkgName):
+    click.echo("INSTALLING .github/workflows/deploy.yml")
+    dpath = "{package_dir}/.github/workflows/deploy.yml".format(package_dir=pkgDir)
+    info = {'PKG': pkgName, 'EXE': 'rel-easy'}
+    templ_path = os.path.join(os.path.dirname(__file__),
+                              "DATA", "github-deploy-action-yml.tmpl")
+    github_action_def = open(templ_path).read().format(**info)
+    os.makedirs(os.path.dirname(dpath), exist_ok=True)
+    with open(dpath, "w") as f:
+        f.write(github_action_def)
+    os.system("git add {package_dir}/.github/workflows/deploy.yml".format(package_dir=pkgDir))
+    print("installed .github/workflows/deploy.yml")
 
 
 def do_create_version_file_and_get_version(major, minor, build, extra, **kwds):

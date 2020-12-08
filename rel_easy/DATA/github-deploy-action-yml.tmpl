@@ -15,27 +15,27 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        ref: ${{ github.event.release.target_commitish }}
+        ref: ${{{{ github.event.release.target_commitish }}}}
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
     - name: Install dependencies
       run: |
-        echo Tag Version: ${GITHUB_REF##*/}
+        echo Tag Version: ${{GITHUB_REF##*/}}
         python -m pip install --upgrade pip
         pip install setuptools wheel twine {EXE}
 
     - name: Update Version
       run: |
-        TAG=${GITHUB_REF##*/}
+        TAG=${{GITHUB_REF##*/}}
         echo Tag Version: $TAG
         # set the version and current hash
         {EXE} setver -ver $TAG --sha1
     - name: Build and publish
       env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        TWINE_USERNAME: ${{{{ secrets.PYPI_USERNAME }}}}
+        TWINE_PASSWORD: ${{{{ secrets.PYPI_PASSWORD }}}}
       run: |
         {EXE} publish
     - name: Archive production artifacts
@@ -54,5 +54,5 @@ jobs:
         git config user.name "Auto Deploy Script"
         git config user.email "<no@email.com>"
         git add {PKG}/version.py
-        git commit -m "Updated Verion to ${{ github.event.release.tag_name }} And Released build to PyPi"
+        git commit -m "Updated Verion to ${{{{ github.event.release.tag_name }}}} And Released build to PyPi"
         git push origin master
