@@ -33,14 +33,17 @@ class OSFindPackages:
 
     def convert_to_package(self, dirname):
         return PkgData(dirname)
-    def should_ignore(self,fpath):
+
+    def should_ignore(self, fpath):
         return any(ignore in fpath for ignore in self.ignore_patterns)
-    def skip_node(self,fpath):
+
+    def skip_node(self, fpath):
         tmp = not os.path.isdir(fpath)
         basename = os.path.basename(fpath)
         tmp = tmp or fpath in self.seen or self.should_ignore(fpath)
         tmp = tmp or basename.startswith(".") or basename.startswith("_")
         return tmp
+
     def search_item(self, item):
         pkg_name = os.path.basename(item)
         files = os.listdir(item)
@@ -63,7 +66,7 @@ class OSFindPackages:
 class PkgData:
     def __init__(self, pkg_path):
         pkg_path = os.path.abspath(pkg_path)
-        assert os.path.isdir(pkg_path) and os.path.exists(os.path.join(pkg_path,"__init__.py")), "Invalid PACKAGE DIR"
+        assert os.path.isdir(pkg_path) and os.path.exists(os.path.join(pkg_path, "__init__.py")), "Invalid PACKAGE DIR"
         self.pkg_path = pkg_path
         self.pkg_dir = os.path.dirname(pkg_path)
         self.pkg_name = os.path.basename(pkg_path)
