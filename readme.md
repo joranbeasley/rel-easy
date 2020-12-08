@@ -1,4 +1,5 @@
 # rel-easy
+![Lint Package](https://github.com/joranbeasley/rel-easy/workflows/Lint%20Package/badge.svg)
 
 making version management and pip package releases easy and FUN~
 
