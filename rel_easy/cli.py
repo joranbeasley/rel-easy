@@ -201,8 +201,8 @@ def create_project(package_name, version, description, author, email, url):
         f.write("from .version import __version__")
     do_create_version_file_and_get_version(0, 0, 0, '', version=version,
                                            package_dir={'package_dir': '.', 'package': pkg_dir})
-    create_setup_py('./setup.py', pkg_name=package_name, pkg_desc=description, pkg_author=author, pkg_email=email,
-                    pkg_site=url)
+    create_setup_py('./setup.py', pkg_name=package_name, pkg_desc=description, pkg_author=author,
+                    pkg_email=email, pkg_site=url)
 
 
 @cli.command("init")

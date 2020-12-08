@@ -351,7 +351,7 @@ def temp_cwd(cwd):
 def create_setup_py(fpath, pkg_name, pkg_desc, pkg_author, pkg_email, pkg_site):
     fmt_data = dict(
         VERSIONING=os.path.basename(os.path.abspath(os.path.dirname(__file__))),
-        PKG=pkg_name.replace("-","_"),
+        PKG=pkg_name.replace("-", "_"),
         SITE=pkg_site,
         PKG_NAME=pkg_name,
         # PKG_NAME_UNDASHED=pkg_name.replace("-","_"),
