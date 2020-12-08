@@ -66,7 +66,8 @@ class OSFindPackages:
 class PkgData:
     def __init__(self, pkg_path):
         pkg_path = os.path.abspath(pkg_path)
-        assert os.path.isdir(pkg_path) and os.path.exists(os.path.join(pkg_path, "__init__.py")), "Invalid PACKAGE DIR"
+        assert os.path.isdir(pkg_path) and \
+               os.path.exists(os.path.join(pkg_path, "__init__.py")), "Invalid PACKAGE DIR"
         self.pkg_path = pkg_path
         self.pkg_dir = os.path.dirname(pkg_path)
         self.pkg_name = os.path.basename(pkg_path)
