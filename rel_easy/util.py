@@ -9,20 +9,28 @@ from contextlib import contextmanager
 from logging.handlers import RotatingFileHandler
 
 # precompile regex
-AUTHOR_RE_PATTERN = re.compile(r"([^ ]+)\s+([^ ]+)?\s*<?\s*([^\s]+@[^\s]+\.[^\s]+)\s*>\s*")
+AUTHOR_RE_PATTERN = re.compile(
+    r"([^ ]+)\s+([^ ]+)?\s*<?\s*([^\s]+@[^\s]+\.[^\s]+)\s*>\s*"
+)
 
 
-def get_log(name, fpath=None, format="%(level)s:%(asctime)s: %(message)s",
-            stdout=False, **filehandlerkwargs):
+def get_log(
+    name,
+    fpath=None,
+    format="%(level)s:%(asctime)s: %(message)s",
+    stdout=False,
+    **filehandlerkwargs
+):
     import logging
+
     log = logging.getLogger(name)
     if len(log.handlers):
         return log
     if not fpath:
         stdout = True
     else:
-        filehandlerkwargs.setdefault('maxBytes', 20000000)
-        filehandlerkwargs.setdefault('backupCount', 2)
+        filehandlerkwargs.setdefault("maxBytes", 20000000)
+        filehandlerkwargs.setdefault("backupCount", 2)
         formatter = logging.Formatter(format)
         handler = RotatingFileHandler(fpath, **filehandlerkwargs)
         handler.setFormatter(formatter)
@@ -37,7 +45,7 @@ def get_log(name, fpath=None, format="%(level)s:%(asctime)s: %(message)s",
 def path_to_package_candidate(path):
     pdir = os.path.dirname(path)
     pname = os.path.basename(path)
-    return {"package_dir": pdir, 'package': pname}
+    return {"package_dir": pdir, "package": pname}
 
 
 def find_package_paths(cwd, ignore_patterns=("venv",)):
@@ -50,6 +58,7 @@ def find_package_paths(cwd, ignore_patterns=("venv",)):
     :return:
     """
     from rel_easy.releasy_pkg_data import OSFindPackages
+
     for pkg in OSFindPackages(cwd, ignore_patterns).find_all("__init__.py"):
         yield pkg.pkg_path
     # dir_frontier = [os.path.abspath(cwd)]
@@ -82,9 +91,17 @@ def find_package_paths(cwd, ignore_patterns=("venv",)):
     # print("C:",pname,isidentifier(pname),"F:",files)
 
 
-def build_and_publish(package_dir, repository="pypi", username=None, password=None, token=None):
+def build_and_publish(
+    package_dir, repository="pypi", username=None, password=None, token=None
+):
     new_files = build_and_clean(package_dir)
-    pypi_upload(new_files, repository=repository, username=username, password=password, token=token)
+    pypi_upload(
+        new_files,
+        repository=repository,
+        username=username,
+        password=password,
+        token=token,
+    )
     return new_files
 
 
@@ -93,7 +110,7 @@ def pypirc_overwrite_config(sections, sectionDefs):
 
     def addSection(cfg, sectionName, sectionDef):
         cfg.add_section(sectionName)
-        for key in ['repository', 'username', 'password']:
+        for key in ["repository", "username", "password"]:
             if sectionDef.get(key, None):
                 config[s][key] = sectionDef[key]
 
@@ -107,12 +124,16 @@ def pypirc_overwrite_config(sections, sectionDefs):
 def pypirc_parse_config():
     cfg = configparser.ConfigParser()
     cfg.read(os.path.expanduser("~/.pypirc"))
-    data = {"distutils": {'index-servers': [''], }}
+    data = {
+        "distutils": {
+            "index-servers": [""],
+        }
+    }
     for s in cfg.sections():
         if s == "distutils":
-            if 'index-servers' in cfg[s]:
-                ix = cfg[s]['index-servers'].splitlines()
-                data[s] = {'index-servers': ix}
+            if "index-servers" in cfg[s]:
+                ix = cfg[s]["index-servers"].splitlines()
+                data[s] = {"index-servers": ix}
         else:
             data[s] = dict(cfg[s].items())
     return data
@@ -150,27 +171,29 @@ def pip_get_conf_servers(*keys):
     servers = {}
 
     for k in keys:
-        servers2 = data.get('global', {}).get(k, None)
+        servers2 = data.get("global", {}).get(k, None)
         if not isinstance(servers2, list):
             if servers2:
                 servers2 = [servers2]
             else:
                 continue
         assert isinstance(servers2, list)
-        servers[k] = [''] + servers2 if not len(servers2) and servers2[0] != '' else servers2
+        servers[k] = (
+            [""] + servers2 if not len(servers2) and servers2[0] != "" else servers2
+        )
     return servers
 
 
 def pip_delete_index_url_from_conf(url):
     data = pip_parse_conf()
-    if url in data.get('global', {}).get('index-url', []):
+    if url in data.get("global", {}).get("index-url", []):
         print("FOUND URL IN index-url")
-        ix_list = data['global']['index-url']
+        ix_list = data["global"]["index-url"]
         ix_list.remove(url)
         pip_save_config_dict(ix_list)
-    elif url in data.get('global', {}).get('extra-index-url', []):
+    elif url in data.get("global", {}).get("extra-index-url", []):
         # print("FOUND URL IN extra-index-url")
-        ix_list = data['global']['extra-index-url']
+        ix_list = data["global"]["extra-index-url"]
         ix_list.remove(url)
         pip_save_config_dict(data)
     else:
@@ -180,14 +203,14 @@ def pip_delete_index_url_from_conf(url):
 
 def pip_add_extra_index_url_to_conf(url):
     data = pip_parse_conf()
-    data.setdefault('global', {}).setdefault('extra-index-url', None)
-    if not isinstance(data['global']['extra-index-url'], list):
-        if data['global']['extra-index-url']:
-            data['global']['extra-index-url'] = ['', data['global']['extra-index-url']]
+    data.setdefault("global", {}).setdefault("extra-index-url", None)
+    if not isinstance(data["global"]["extra-index-url"], list):
+        if data["global"]["extra-index-url"]:
+            data["global"]["extra-index-url"] = ["", data["global"]["extra-index-url"]]
         else:
-            data['global']['extra-index-url'] = ['']
-    if url not in data['global']['extra-index-url']:
-        data['global']['extra-index-url'].append(url)
+            data["global"]["extra-index-url"] = [""]
+    if url not in data["global"]["extra-index-url"]:
+        data["global"]["extra-index-url"].append(url)
         pip_save_config_dict(data)
     else:
         print("CANNOT ADD '%s' ... its already there" % url)
@@ -248,11 +271,11 @@ def pypirc_remove_section(cfg, sectionName):
         cfg.read(os.path.expanduser("~/.pypirc"))
     if sectionName not in cfg:
         raise TypeError("Unable to get section: %s" % sectionName)
-    ix_urls = cfg['distutils'].get('index-servers', "").splitlines()
+    ix_urls = cfg["distutils"].get("index-servers", "").splitlines()
     cfg.remove_section(sectionName)
     if sectionName in ix_urls:
         ix_urls.remove(sectionName)
-        cfg['distutils']['index-servers'] = "\n".join(ix_urls)
+        cfg["distutils"]["index-servers"] = "\n".join(ix_urls)
     pypirc_save_config(cfg)
 
 
@@ -261,9 +284,9 @@ def pypirc_add_section_to_config(cfg, section_name, **sectiondef):
         cfg = configparser.ConfigParser()
         cfg.read(os.path.expanduser("~/.pypirc"))
     if section_name not in cfg:
-        ix_urls = cfg['distutils'].get('index-servers', "").splitlines()
+        ix_urls = cfg["distutils"].get("index-servers", "").splitlines()
         ix_urls.append(section_name)
-        cfg['distutils']['index-servers'] = "\n".join(ix_urls)
+        cfg["distutils"]["index-servers"] = "\n".join(ix_urls)
         cfg.add_section(section_name)
     else:
         print("Section exists configure: %s" % section_name)
@@ -273,6 +296,7 @@ def pypirc_add_section_to_config(cfg, section_name, **sectiondef):
 
 
 # add_section_to_pypirc(None,"bob",**{"username":"__token__","repository":"http://asdasd.com/simple","password":"asdasdasdasdasdasd"})
+
 
 def pypi_upload(new_files, token=None, username=None, password=None, repository="pypi"):
     """
@@ -286,6 +310,7 @@ def pypi_upload(new_files, token=None, username=None, password=None, repository=
     :return:
     """
     from twine.cli import dispatch
+
     if token:
         username = "__token__"
         password = token
@@ -308,20 +333,23 @@ def build_package(package_dir):
     dist_dir = os.path.join(package_dir, "dist")
     if os.path.exists(dist_dir):
         old_files = set(map(lambda f: os.path.join(dist_dir, f), os.listdir(dist_dir)))
-    p = subprocess.Popen([sys.executable, "./setup.py", "build", "sdist", "bdist_wheel"],
-                         cwd=package_dir, stdout=sys.stdout)
+    p = subprocess.Popen(
+        [sys.executable, "./setup.py", "build", "sdist", "bdist_wheel"],
+        cwd=package_dir,
+        stdout=sys.stdout,
+    )
     p.communicate()
     new_files = set(map(lambda f: os.path.join(dist_dir, f), os.listdir(dist_dir)))
     return list(new_files.difference(old_files))
 
 
 def build_and_clean(package_dir):
-    pkg_dir = package_dir['package_dir']
+    pkg_dir = package_dir["package_dir"]
     new_files = build_package(pkg_dir)
     folders_to_remove = [
         os.path.join(pkg_dir, "build"),
-        os.path.join(pkg_dir, "%s.egg-info" % (package_dir['package'])),
-        os.path.join(pkg_dir, package_dir['package'], "__pycache__")
+        os.path.join(pkg_dir, "%s.egg-info" % (package_dir["package"])),
+        os.path.join(pkg_dir, package_dir["package"], "__pycache__"),
     ]
     for folder in folders_to_remove:
         shutil.rmtree(folder, ignore_errors=True)
@@ -334,7 +362,7 @@ def create_version_file(package, package_dir, verString, sha_hash="", **kwds):
     # pi2 = re.sub("", "", pi1)
     with open(os.path.join(ppath, "version.py"), "w") as f:
         if sha_hash and re.match("^[0-9a-fA-F]+$", sha_hash.strip()):
-            sha_hash = "__hash__ = \"%s\"" % sha_hash
+            sha_hash = '__hash__ = "%s"' % sha_hash
         ver_tmpl_path = os.path.join(os.path.dirname(__file__), "DATA", "version.tmpl")
         template = open(ver_tmpl_path, "r").read().format(VER=verString, HASH=sha_hash)
         f.write(template)
@@ -376,12 +404,12 @@ def get_or_prompt(kwds, option, bypass_prompt, default, prompt_fn):
 
 
 def separate_name_and_email(s):
-    pkg = {'email': None}
+    pkg = {"email": None}
 
     def matcher(m):
         name = " ".join(map(str.title, m.groups()[:2]))
-        pkg['email'] = m.group(3)
+        pkg["email"] = m.group(3)
         return name
 
-    pkg['author'] = AUTHOR_RE_PATTERN.sub(matcher, s)
+    pkg["author"] = AUTHOR_RE_PATTERN.sub(matcher, s)
     return pkg

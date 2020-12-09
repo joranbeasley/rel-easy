@@ -21,8 +21,11 @@ class SemVersion:
     True
 
     """
-    version_re = re.compile(r"(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<build>\d+)"
-                            r"(?P<extra>[^ \d][0-9a-zA-Z]*)?)?")
+
+    version_re = re.compile(
+        r"(?P<major>\d+)\.(?P<minor>\d+)(?:\.(?P<build>\d+)"
+        r"(?P<extra>[^ \d][0-9a-zA-Z]*)?)?"
+    )
 
     @staticmethod
     def from_string(s):
@@ -39,7 +42,7 @@ class SemVersion:
         if not match:
             raise TypeError("cannot parse %r to version" % (s,))
         data = match.groupdict()
-        return SemVersion(data['major'], match['minor'], data['build'], data["extra"])
+        return SemVersion(data["major"], match["minor"], data["build"], data["extra"])
 
     # def __lt__(self, other):
     #     return self.__cmp__("lt",other)
@@ -72,18 +75,23 @@ class SemVersion:
         return self.version_tuple[2]
 
     def set(self, major=None, minor=None, build=None, extra=""):
-        self.version_tuple = (int(major or self.version_tuple[0]),
-                              int(minor or self.version_tuple[1]),
-                              int(build or self.version_tuple[1]))
+        self.version_tuple = (
+            int(major or self.version_tuple[0]),
+            int(minor or self.version_tuple[1]),
+            int(build or self.version_tuple[1]),
+        )
         self.extra_tag = extra or self.extra_tag
-        self.version = "{0}.{1}.{2}{extra}".format(*self.version_tuple, extra=self.extra_tag)
+        self.version = "{0}.{1}.{2}{extra}".format(
+            *self.version_tuple, extra=self.extra_tag
+        )
 
     def __init_cmp(self):
-        for c in ['lt', 'le', 'gt', 'ge']:
+        for c in ["lt", "le", "gt", "ge"]:
+
             def cmp_it(a=None, b=None, method=c):
                 return a.__cmp__(method, b)
 
-            setattr(self.__class__, '__%s__' % c, cmp_it)
+            setattr(self.__class__, "__%s__" % c, cmp_it)
 
     def __str__(self):
         return self.version
@@ -114,6 +122,7 @@ class SemVersion:
 
     def get_version_tuple_from_object(self, other):
         import six
+
         # print("CONVERT:",repr(other))
         if isinstance(other, (bytes, six.string_types)):
             other = [int(x) for x in other.split(".", 4)[:3]]

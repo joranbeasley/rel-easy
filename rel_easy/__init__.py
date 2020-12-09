@@ -1,4 +1,5 @@
-from .semversion import SemVersion # noqa
+from .semversion import SemVersion  # noqa
+
 try:
     from .version import __version__
 except ImportError:

@@ -12,7 +12,7 @@ class OSFindPackages:
     seen = set()
     needle = None
 
-    def __init__(self, cwd, ignore_patterns=('venv')):
+    def __init__(self, cwd, ignore_patterns=("venv")):
         self.frontier = [os.path.abspath(cwd)]
         self.seen = set()
         self.needle = None
@@ -67,35 +67,37 @@ class OSFindPackages:
 class PkgData:
     def __init__(self, pkg_path):
         pkg_path = os.path.abspath(pkg_path)
-        assert os.path.isdir(pkg_path) and \
-               os.path.exists(os.path.join(pkg_path, "__init__.py")), "Invalid PACKAGE DIR"
+        assert os.path.isdir(pkg_path) and os.path.exists(
+            os.path.join(pkg_path, "__init__.py")
+        ), "Invalid PACKAGE DIR"
         self.pkg_path = pkg_path
         self.pkg_dir = os.path.dirname(pkg_path)
         self.pkg_name = os.path.basename(pkg_path)
         self.init_py = os.path.join(pkg_path, "__init__.py")
         self.ver_py = os.path.join(pkg_path, "version.py")
         self.setup_py = os.path.join(self.pkg_dir, "setup.py")
+
     # def version(self):
     #     if os.path.exists()
 
 
 class PypiRc:
-    """
-
-    """
+    """"""
 
     def __init__(self):
         self.fpath = os.path.join(os.path.expanduser("~/.pypirc"))
         self.config = self.load()
 
     def index_urls(self):
-        return list(filter(None, self.config['distutils']['index-servers'].splitlines()))
+        return list(
+            filter(None, self.config["distutils"]["index-servers"].splitlines())
+        )
 
     def add_index_url(self, url):
-        self.config['distutils']['index-servers'] += "\n{0}".format(url)
+        self.config["distutils"]["index-servers"] += "\n{0}".format(url)
 
     def set_index_urls(self, *urls):
-        self.config['distutils']['index-servers'] += "\n{0}".format([''] + urls)
+        self.config["distutils"]["index-servers"] += "\n{0}".format([""] + urls)
 
     def save(self):
         self.config.write(open(self.fpath, "w"))
@@ -103,14 +105,16 @@ class PypiRc:
     def load(self):
         self.config = configparser.ConfigParser()
         self.config.read(self.fpath)
-        if 'distutils' not in self.config.sections():
-            self.config.add_section('distutils')
-        if 'index-servers' not in self.config['distutils']:
-            self.config['distutils']['index-servers'] = ''
+        if "distutils" not in self.config.sections():
+            self.config.add_section("distutils")
+        if "index-servers" not in self.config["distutils"]:
+            self.config["distutils"]["index-servers"] = ""
         return self.config
 
-    def create_or_update_alias_section(self, alias, repository=None, username=None, password=None):
-        keys = 'repository', 'username', 'password'
+    def create_or_update_alias_section(
+        self, alias, repository=None, username=None, password=None
+    ):
+        keys = "repository", "username", "password"
         vals = [repository, username, password]
         data_dict = {k: v for k, v in zip(keys, vals) if v is not None}
         if alias not in self.config.sections():
