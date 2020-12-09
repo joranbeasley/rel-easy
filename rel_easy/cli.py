@@ -221,7 +221,8 @@ def create_project(package_name, version, description, author, email, url,
         os.system('git init && git add *')
         install_github_release_action('.', package_name.replace("-","_"))
     if add_github_lint_action:
-        print("Not Yet ")
+        print("Not Yet able to add_github_lint_action")
+        # install_github_release_action('.', package_name.replace("-", "_"))
 
 @cli.command("init")
 @click.argument("major", type=int, default=0, required=False)
@@ -269,6 +270,9 @@ def init(major, minor, build, extra, **kwds):
             click.echo("setup.py is already configured")
     if kwds.get("gh_action") == "y":
         install_github_release_action()
+def install_github_lint_action(pkgDir,pkgName):
+    click.echo("INSTALLING .github/workflows/lint.yml")
+    dpath = "{package_dir}/.github/workflows/lint.yml".format(package_dir=pkgDir)
 def install_github_release_action(pkgDir,pkgName):
     click.echo("INSTALLING .github/workflows/deploy.yml")
     dpath = "{package_dir}/.github/workflows/deploy.yml".format(package_dir=pkgDir)
