@@ -23,7 +23,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install Dependencies
       run: |
-        pip install flake8 radon
+        pip install flake8 radon flake8_polyfill
     - name: Lint Critical Errors
       run: |
         # stop the build if there are Python syntax errors or undefined names
