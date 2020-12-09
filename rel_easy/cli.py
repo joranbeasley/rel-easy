@@ -208,7 +208,6 @@ def get_pkgname(ctx,opts,args):
 # @click.option("-l","--add-github-lint-action", is_flag=True,prompt=True, default=True)#type=click.Choice("Yn",case_sensitive=False), default="y", prompt=True)
 def create_project(package_name, version, description, author, email, url,
                    add_github_release_action, add_github_lint_action):
-
     pkg_dir = package_name.replace("-", "_")
     os.makedirs(pkg_dir)
     with open("%s/__init__.py" % pkg_dir, "w") as f:
