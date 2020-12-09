@@ -4,6 +4,7 @@ import re
 
 # hacky backport that works in all python
 isidentifier = re.compile(r"[a-zA-Z_][a-zA-Z0-9_]*$").match
+ispkgname = re.compile(r"[a-zA-Z_][a-zA-Z0-9_-]*$").match
 
 
 class OSFindPackages:

@@ -7,8 +7,9 @@ from functools import wraps
 import click
 
 from rel_easy import SemVersion
+from rel_easy import __version__
 from rel_easy.consts import VER_NAMES, ERR_NO_NEW_FILES
-from rel_easy.releasy_pkg_data import PypiRc
+from rel_easy.releasy_pkg_data import PypiRc, isidentifier, ispkgname
 from rel_easy.util import find_package_paths, path_to_package_candidate, create_setup_py, \
     get_or_prompt, separate_name_and_email, build_and_clean, pypi_upload, create_version_file, \
     temp_cwd, pypirc_parse_config, pip_add_extra_index_url_to_conf, \
@@ -55,11 +56,11 @@ def print_version():
 
 
 @click.group()
-@click.option("-v", "--version", is_flag=True)
+@click.version_option(__version__)
 @click.pass_context
-def cli(ctx, version=False):
-    if not ctx.invoked_subcommand and version:
-        print_version()
+def cli(ctx):
+    pass
+
 
 
 def require_init(fn):
@@ -186,16 +187,28 @@ def deploy_pypi(package_dir, version=None, sha1=False, build_only=False, **kwds)
         new_file_basenames = map(os.path.basename, new_files)
         click.echo("\n".join(map("Built And Published: {0}".format, new_file_basenames)))
 
+def get_pkgname(ctx,opts,args):
+    # if args is None:
+    if not args:
+        args = click.prompt("Enter Package Name")
+        while not args or not ispkgname(args):
+            args = click.prompt("INVALID NAME\nEnter Package Name")
+
+    return args
 
 @cli.command("start")
-@click.option("-p", "--package-name", prompt=True, type=str)
+@click.argument("package_name",default=None, required=False, callback=get_pkgname)
 @click.option("-v", "--version", prompt=False, default="0.0.1", type=str)
 @click.option("-d", "--description", prompt=True, default="a short description", type=str)
 @click.option("-a", "--author", prompt=True, default="Releasy Autobot", type=str)
 @click.option("-e", "--email", prompt=True, default="releasy@works.com", type=str)
 @click.option("-u", "--url", prompt=True, default="https://github.com", type=str)
-@click.option("-g","--add-github-release-action",type=bool,default=True,prompt=True)
-def create_project(package_name, version, description, author, email, url,add_github_release_action):
+@click.option("-r","--add-github-release-action", is_flag=True,prompt=True, default=True)#type=click.Choice("Yn",case_sensitive=False), default="y", prompt=True)
+@click.option("-l","--add-github-lint-action", is_flag=True,prompt=True, default=True)#type=click.Choice("Yn",case_sensitive=False), default="y", prompt=True)
+# @click.option("-l","--add-github-lint-action", is_flag=True,prompt=True, default=True)#type=click.Choice("Yn",case_sensitive=False), default="y", prompt=True)
+def create_project(package_name, version, description, author, email, url,
+                   add_github_release_action, add_github_lint_action):
+
     pkg_dir = package_name.replace("-", "_")
     os.makedirs(pkg_dir)
     with open("%s/__init__.py" % pkg_dir, "w") as f:
@@ -208,6 +221,8 @@ def create_project(package_name, version, description, author, email, url,add_gi
         print("ADD GITHUB RELEASE ACTION!")
         os.system('git init && git add *')
         install_github_release_action('.', package_name.replace("-","_"))
+    if add_github_lint_action:
+        print("Not Yet ")
 
 @cli.command("init")
 @click.argument("major", type=int, default=0, required=False)

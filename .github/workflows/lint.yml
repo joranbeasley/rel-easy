@@ -6,7 +6,7 @@ on:
       version:
         description: 'Version Identifier'
         required: true
-        default: 'a0.0.0v'
+        default: '0.0.0'
 jobs:
   lint:
     name: Run Linter
